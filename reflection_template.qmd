@@ -22,21 +22,23 @@ execute:
 
 ```{r}
 #| label: wd-1-csv-1
-
+#| Lab 2 Question 1
+surveys <- read_csv(here::here("Week 2", "Lab2", "surveys.csv"))
 ```
 
 -   `csv` Example 2
 
 ```{r}
 #| label: wd-1-csv-2
-
+#| Challenge 3
+evals <- read_csv(here::here("Week 3", "Lab 3", "teacher_evals.csv"))
 ```
 
 -   `xlsx`
 
 ```{r}
 #| label: wd-1-xlsx
-
+SKIPPED
 ```
 
 **WD-2: I can select necessary columns from a dataset.**
@@ -45,6 +47,17 @@ execute:
 
 ```{r}
 #| label: wd-2-ex-1
+# Lab 3 Question 5 Revised
+# Success comment: "Nice use of across!"
+
+teacher_evals_clean <- evals |>
+  rename(sex = gender) |>
+  filter(no_participants >= 10) |>
+  mutate(across(.cols = c(course_id, teacher_id), .fns = ~ as.character(.x)),
+         across(.cols = c(question_no, academic_degree, sex), .fns = ~ as.factor(.x)),
+         no_participants = as.integer(no_participants)
+         ) |>
+  select(course_id, teacher_id, question_no, no_participants, resp_share, SET_score_avg, percent_failed_cur, academic_degree, seniority, sex)
 
 ```
 
@@ -52,7 +65,7 @@ execute:
 
 ```{r}
 #| label: wd-2-ex-2
-
+SKIPPED
 ```
 
 -   Example selecting columns based on logical values (e.g., `starts_with()`, `ends_with()`, `contains()`, `where()`)
@@ -68,7 +81,20 @@ execute:
 
 ```{r}
 #| label: wd-3-numeric-ex-1
+# Lab 4 Question 5 Revised
+# Growing Comment: Notice that your table still has a grouping variable! Because you grouped by **two** variables, your first group was not dropped! Can you give your column names better titles, so the reader knows what "2008" and "2018" represent? What are the values stored in these columns?
+# I added .groups = "drop" to make sure that all grouping is removed. I also added prefixes to the column names to make it clear to the reader what values are in these columns. 
 
+income_by_region <- ca_childcare |>
+  filter(study_year %in% c(2008, 2018)) |>
+  group_by(county_region, study_year) |>
+  summarize(median_income = median(mhi_2018, na.rm = TRUE), .groups = "drop") |>
+  pivot_wider(names_from = study_year,
+              values_from = median_income,
+              names_prefix = "median_income_") |>
+  arrange(desc(median_income_2018))
+
+income_by_region
 ```
 
 -   Numeric Example 2
@@ -105,7 +131,20 @@ execute:
 
 ```{r}
 #| label: wd-4-numeric-ex-1
+# Lab 4 Question 5 Revised
+# Growing Comment: Notice that your table still has a grouping variable! Because you grouped by **two** variables, your first group was not dropped! Can you give your column names better titles, so the reader knows what "2008" and "2018" represent? What are the values stored in these columns?
+# I added .groups = "drop" to make sure that all grouping is removed. I also added prefixes to the column names to make it clear to the reader what values are in these columns. 
 
+income_by_region <- ca_childcare |>
+  filter(study_year %in% c(2008, 2018)) |>
+  group_by(county_region, study_year) |>
+  summarize(median_income = median(mhi_2018, na.rm = TRUE), .groups = "drop") |>
+  pivot_wider(names_from = study_year,
+              values_from = median_income,
+              names_prefix = "median_income_") |>
+  arrange(desc(median_income_2018))
+
+income_by_region
 ```
 
 -   Numeric Example 2
@@ -209,7 +248,20 @@ execute:
 
 ```{r}
 #| label: wd-7-wide
+# Lab 4 Question 5 Revised
+# Growing Comment: Notice that your table still has a grouping variable! Because you grouped by **two** variables, your first group was not dropped! Can you give your column names better titles, so the reader knows what "2008" and "2018" represent? What are the values stored in these columns?
+# I added .groups = "drop" to make sure that all grouping is removed. I also added prefixes to the column names to make it clear to the reader what values are in these columns. 
 
+income_by_region <- ca_childcare |>
+  filter(study_year %in% c(2008, 2018)) |>
+  group_by(county_region, study_year) |>
+  summarize(median_income = median(mhi_2018, na.rm = TRUE), .groups = "drop") |>
+  pivot_wider(names_from = study_year,
+              values_from = median_income,
+              names_prefix = "median_income_") |>
+  arrange(desc(median_income_2018))
+
+income_by_region
 ```
 
 ## Reproducibility
@@ -338,14 +390,85 @@ The following assignments satisfy the above criteria:
 
 ```{r}
 #| label: dvs-3-1-ex-1
+# Lab 4 Question 7 Revised
+# Success comment: Nice work pivoting and modifying the age variable!Nice work reordering your legend and your facets!!!Can you match my colors??? These are coming from a package and you will need to expand the color palette to get all 10 colors.
 
+region_labels <- c(
+  san_fran_counties            = "San Francisco Bay Area",
+  inland_counties              = "Inland Empire",
+  superior_counties            = "Superior California",
+  north_coast_counties         = "North Coast",
+  central_coast_counties       = "Central Coast",
+  n_san_joaquin_counties       = "Northern San Joaquin Valley",
+  s_san_joaquin_counties       = "Southern San Joaquin Valley",
+  la_county                    = "Los Angeles County",
+  orange_county                = "Orange County",
+  san_diego_imperial_counties  = "San Diego–Imperial"
+)
+ca_childcare |>
+  pivot_longer(cols = c(mc_infant, mc_toddler, mc_preschool),
+             names_to = "age_group", names_prefix = "mc_",
+             values_to = "weekly_price") |>
+  mutate(age_group = str_to_title(age_group),
+  county_region = fct_reorder2(.f = county_region,
+                               .x = study_year,
+                               .y = weekly_price)) |> 
+  ggplot(mapping = aes(x = study_year, y = weekly_price, color = county_region)) +
+  geom_point(alpha = 0.8, size = 0.6) +
+  geom_smooth(method = "loess", linewidth = 0.5) + 
+  facet_wrap(~ age_group) + 
+  labs(
+    title = "Weekly Median Price for Center-Based Childcare ($)",
+    x = "Study Year",
+    y = NULL,
+    color = "California Region"
+  ) + 
+    scale_color_manual(
+    breaks = names(region_labels),
+    labels = region_labels,
+    values = colorRampPalette(brewer.pal(8, "Accent"))(10)
+  ) +
+  scale_x_continuous(breaks = seq(2008, 2018, by = 2)) + 
+  scale_y_continuous(limits = c(100, 500)) +
+  theme_bw() +
+  theme(
+    aspect.ratio = 1,
+    axis.text = element_text(size = 6),
+    plot.title = element_text(size = 10),
+    panel.border = element_rect(color = "black", fill = NA)
+  )  
 ```
 
 -   I can use non-standard colors (Example 2)
 
 ```{r}
 #| label: dvs-3-1-ex-2
+# Challenge 4 Question 2 Revised
+#Incredible work! Nice job matching the colors, the percentage labels, and the legend position! Your colors are SO close! I chose colors from the Valkyries. You can use a color picker app (or Chrome extension) to feed in a plot / website and get the hex codes for the colors out! Then you don’t have to memorize what my favorite colors are. :)
 
+ggplot(data = teacher_evals_compare) +
+  geom_bar(
+    mapping = aes(x = sen_level, fill = set_level),
+    position = "fill"
+  ) +
+  scale_fill_manual(
+    values = c(
+      "excellent" = "#B897D4",  
+      "standard"  = "#BA965C"   
+    )
+  ) +
+  labs(
+    title = "Evaluation of Teachers' Use of Activities",
+    x = "Years of Experience",
+    y = NULL,
+    fill = "Evaluation Rating"
+  ) +
+  theme_minimal() + 
+  theme(
+    legend.position = "top",
+    panel.border = element_rect(color = "black")
+  ) +
+  scale_y_continuous(labels = scales::label_percent())
 ```
 
 -   I can use annotations (e.g., `geom_text()`)
@@ -368,7 +491,14 @@ The following assignments satisfy the above criteria:
 
 ```{r}
 #| label: dvs-4-summarize
+# Success comment: Nice work! This is an efficient way to get both summaries in one function call!
 
+teacher_evals_clean |>
+  summarize(
+    n_distinct(teacher_id),
+    n_distinct(course_id)
+  )
+    
 ```
 
 -   Example using `across()`
@@ -400,7 +530,20 @@ The following assignments satisfy the above criteria:
 
 ```{r}
 #| label: dvs-6-ex-1
+# Lab 4 Question 5 Revised
+# Growing Comment: Notice that your table still has a grouping variable! Because you grouped by **two** variables, your first group was not dropped! Can you give your column names better titles, so the reader knows what "2008" and "2018" represent? What are the values stored in these columns?
+# I added .groups = "drop" to make sure that all grouping is removed. I also added prefixes to the column names to make it clear to the reader what values are in these columns. 
 
+income_by_region <- ca_childcare |>
+  filter(study_year %in% c(2008, 2018)) |>
+  group_by(county_region, study_year) |>
+  summarize(median_income = median(mhi_2018, na.rm = TRUE), .groups = "drop") |>
+  pivot_wider(names_from = study_year,
+              values_from = median_income,
+              names_prefix = "median_income_") |>
+  arrange(desc(median_income_2018))
+
+income_by_region
 ```
 
 -   I can modify the text in my table to be more readable (e.g., bold face for column headers)
@@ -448,6 +591,17 @@ The following assignments satisfy the above criteria:
 
 ```{r}
 #| label: pe-1-across
+#| Lab 3 Question 5 Revised
+# Success comment: "Nice use of across!"
+
+teacher_evals_clean <- evals |>
+  rename(sex = gender) |>
+  filter(no_participants >= 10) |>
+  mutate(across(.cols = c(course_id, teacher_id), .fns = ~ as.character(.x)),
+         across(.cols = c(question_no, academic_degree, sex), .fns = ~ as.factor(.x)),
+         no_participants = as.integer(no_participants)
+         ) |>
+  select(course_id, teacher_id, question_no, no_participants, resp_share, SET_score_avg, percent_failed_cur, academic_degree, seniority, sex)
 
 ```
 
@@ -487,6 +641,17 @@ The following assignments satisfy the above criteria:
 
 ```{r}
 #| label: pe-3-across
+#| Lab 3 Question 5 Revised
+# Success comment: "Nice use of across!"
+
+teacher_evals_clean <- evals |>
+  rename(sex = gender) |>
+  filter(no_participants >= 10) |>
+  mutate(across(.cols = c(course_id, teacher_id), .fns = ~ as.character(.x)),
+         across(.cols = c(question_no, academic_degree, sex), .fns = ~ as.factor(.x)),
+         no_participants = as.integer(no_participants)
+         ) |>
+  select(course_id, teacher_id, question_no, no_participants, resp_share, SET_score_avg, percent_failed_cur, academic_degree, seniority, sex)
 
 ```
 
