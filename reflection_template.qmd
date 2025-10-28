@@ -10,7 +10,7 @@ execute:
   echo: true
 ---
 
-[**My Grade:**]{.underline} I believe my grade equivalent to course work evidenced below to be an \_\_.
+[**My Grade:**]{.underline} I believe my grade equivalent to course work evidenced below to be an A-.
 
 [**Learning Objective Evidence:**]{.underline} In the code chunks below, provide code from Lab or Challenge assignments where you believe you have demonstrated proficiency with the specified learning target. Be sure to specify **where** the code came from (e.g., Lab 4 Question 2).
 
@@ -22,7 +22,7 @@ execute:
 
 ```{r}
 #| label: wd-1-csv-1
-#| Lab 2 Question 1
+# Lab 2 Question 1
 surveys <- read_csv(here::here("Week 2", "Lab2", "surveys.csv"))
 ```
 
@@ -30,7 +30,7 @@ surveys <- read_csv(here::here("Week 2", "Lab2", "surveys.csv"))
 
 ```{r}
 #| label: wd-1-csv-2
-#| Challenge 3
+# Challenge 3
 evals <- read_csv(here::here("Week 3", "Lab 3", "teacher_evals.csv"))
 ```
 
@@ -38,7 +38,7 @@ evals <- read_csv(here::here("Week 3", "Lab 3", "teacher_evals.csv"))
 
 ```{r}
 #| label: wd-1-xlsx
-SKIPPED
+
 ```
 
 **WD-2: I can select necessary columns from a dataset.**
@@ -65,14 +65,65 @@ teacher_evals_clean <- evals |>
 
 ```{r}
 #| label: wd-2-ex-2
-SKIPPED
+# Lab 5
+interview_suspect <- interview |>
+  filter(person_id == 67318) |>
+  select(-person_id)
+
+interview_suspect
 ```
 
 -   Example selecting columns based on logical values (e.g., `starts_with()`, `ends_with()`, `contains()`, `where()`)
 
 ```{r}
 #| label: wd-2-ex-3
-
+# Lab 4 Question 7 Revised
+# Success comment: Nice work pivoting and modifying the age variable!Nice work reordering your legend and your facets!!!Can you match my colors??? These are coming from a package and you will need to expand the color palette to get all 10 colors.
+# I revised this code to use starts_with("mc_") to hit this learning target. 
+region_labels <- c(
+  san_fran_counties            = "San Francisco Bay Area",
+  inland_counties              = "Inland Empire",
+  superior_counties            = "Superior California",
+  north_coast_counties         = "North Coast",
+  central_coast_counties       = "Central Coast",
+  n_san_joaquin_counties       = "Northern San Joaquin Valley",
+  s_san_joaquin_counties       = "Southern San Joaquin Valley",
+  la_county                    = "Los Angeles County",
+  orange_county                = "Orange County",
+  san_diego_imperial_counties  = "San Diego–Imperial"
+)
+ca_childcare |>
+  pivot_longer(cols = starts_with("mc_"),
+             names_to = "age_group", names_prefix = "mc_",
+             values_to = "weekly_price") |>
+  mutate(age_group = str_to_title(age_group),
+  county_region = fct_reorder2(.f = county_region,
+                               .x = study_year,
+                               .y = weekly_price)) |> 
+  ggplot(mapping = aes(x = study_year, y = weekly_price, color = county_region)) +
+  geom_point(alpha = 0.8, size = 0.6) +
+  geom_smooth(method = "loess", linewidth = 0.5) + 
+  facet_wrap(~ age_group) + 
+  labs(
+    title = "Weekly Median Price for Center-Based Childcare ($)",
+    x = "Study Year",
+    y = NULL,
+    color = "California Region"
+  ) + 
+    scale_color_manual(
+    breaks = names(region_labels),
+    labels = region_labels,
+    values = colorRampPalette(brewer.pal(8, "Accent"))(10)
+  ) +
+  scale_x_continuous(breaks = seq(2008, 2018, by = 2)) + 
+  scale_y_continuous(limits = c(100, 500)) +
+  theme_bw() +
+  theme(
+    aspect.ratio = 1,
+    axis.text = element_text(size = 6),
+    plot.title = element_text(size = 10),
+    panel.border = element_rect(color = "black", fill = NA)
+  )  
 ```
 
 **WD-3: I can filter rows from a dataframe for a *variety* of data types (e.g., numeric, integer, character, factor, date).**
@@ -101,28 +152,67 @@ income_by_region
 
 ```{r}
 #| label: wd-3-numeric-ex-1
+# Lab 3 Question 10 Revised
+# Growing Comment: Can you do this in one call to the summarize function?Is there a function that allows you to slice the max of a specific variable? Is there a way you can get the max *and* min in **one** pipeline?
+# In office hours we discussed how slice_min and slice_max could be used, but there was an even more efficient way to find the max and min using filter. 
 
+Q10 <- teacher_evals_clean |>
+  filter(question_no == 901) |>
+  group_by(teacher_id) |> 
+  summarize(course_avg = mean(SET_score_avg), n_courses = n_distinct(course_id)) |>
+  filter(n_courses > 4) |>
+  filter(course_avg == max(course_avg) |
+         course_avg == min(course_avg))
+
+#slice_min(Q10, order_by = course_avg)
+#slice_max(Q10, order_by = course_avg)
+
+Q10
 ```
 
 -   Character Example 1 (any context)
 
 ```{r}
 #| label: wd-3-character
+# Lab 4 Question 2 Revised
+# Success Comment: Why these FIPS codes? Are these for CA? If so, why not just filter for the state being CA?
+# I had originally filtered by CA FIPS codes to filter for the state being CA because I didn't realize that state was a variable. I revised the code to be much simpler to just filter for the state being CA.
 
+ca_childcare <- childcare_costs |>
+  left_join(y = counties, by = "county_fips_code") |>
+  filter(state_abbreviation == "CA")
+
+ca_childcare
 ```
 
 -   Character Example 2 (example must use functions from **stringr**)
 
 ```{r}
 #| label: wd-3-string
+# Lab 4 Question 2 Unrevised
+# Success Comment: Why these FIPS codes? Are these for CA? If so, why not just filter for the state being CA?
+# My unrevised code is not the most efficent for this task, but it is a good example of filtering with a stringr function. 
 
+ca_childcare <- childcare_costs |>
+  filter(str_starts(county_fips_code, "60") | str_starts(county_fips_code, "61")) |>
+  left_join(y = counties,
+            by = "county_fips_code") # "match rows where county_fips_code in my filtered childcare dataset equals county_fips code in the counties dataset"
+ca_childcare
 ```
 
 -   Date (example must use functions from **lubridate**)
 
 ```{r}
 #| label: wd-3-date
+# Lab 5, Revised
+# Success comment: Technically, the date variable was read in as an integer. Could you convert it into a date-time variable? This would give you the opportunity to demonstrate your ability to work with date variables using the lubridate package (e.g., WD-3 & WD-4).
 
+crime <- crime_scene_report |>
+  mutate(date = ymd(date)) |>
+  filter(date == "2018-01-15",        
+         type == "murder",
+         city == "SQL City")
+crime
 ```
 
 **WD-4: I can modify existing variables and create new variables in a dataframe for a *variety* of data types (e.g., numeric, integer, character, factor, date).**
@@ -131,20 +221,22 @@ income_by_region
 
 ```{r}
 #| label: wd-4-numeric-ex-1
-# Lab 4 Question 5 Revised
-# Growing Comment: Notice that your table still has a grouping variable! Because you grouped by **two** variables, your first group was not dropped! Can you give your column names better titles, so the reader knows what "2008" and "2018" represent? What are the values stored in these columns?
-# I added .groups = "drop" to make sure that all grouping is removed. I also added prefixes to the column names to make it clear to the reader what values are in these columns. 
-
-income_by_region <- ca_childcare |>
-  filter(study_year %in% c(2008, 2018)) |>
-  group_by(county_region, study_year) |>
-  summarize(median_income = median(mhi_2018, na.rm = TRUE), .groups = "drop") |>
-  pivot_wider(names_from = study_year,
-              values_from = median_income,
-              names_prefix = "median_income_") |>
-  arrange(desc(median_income_2018))
-
-income_by_region
+# Challenge 3 Question 1, Revised
+# I mutated the question_no variable to remove the "90" from the start of each number.
+teacher_evals_compare <- evals |>
+  group_by(course_id) |>
+  mutate(
+    question_no = as.numeric(str_remove(as.character(question_no), "^90")),
+    set_level = if_else(SET_score_avg >= 4, "excellent", "standard"),
+    sen_level = case_when(
+      seniority <= 4 ~ "junior", 
+      seniority >=5 & seniority <= 8 ~ "senior",
+      seniority > 8 ~ "very senior"
+      )
+    ) |>
+  filter(question_no == 3) |>
+  select(course_id, set_level, sen_level)
+teacher_evals_compare
 ```
 
 -   Numeric Example 2
@@ -165,21 +257,121 @@ income_by_region
 
 ```{r}
 #| label: wd-4-factor-ex-2
+# Lab 4 Question 7 Revised
+# Success comment: Nice work pivoting and modifying the age variable!Nice work reordering your legend and your facets!!!Can you match my colors??? These are coming from a package and you will need to expand the color palette to get all 10 colors.
 
+region_labels <- c(
+  san_fran_counties            = "San Francisco Bay Area",
+  inland_counties              = "Inland Empire",
+  superior_counties            = "Superior California",
+  north_coast_counties         = "North Coast",
+  central_coast_counties       = "Central Coast",
+  n_san_joaquin_counties       = "Northern San Joaquin Valley",
+  s_san_joaquin_counties       = "Southern San Joaquin Valley",
+  la_county                    = "Los Angeles County",
+  orange_county                = "Orange County",
+  san_diego_imperial_counties  = "San Diego–Imperial"
+)
+ca_childcare |>
+  pivot_longer(cols = c(mc_infant, mc_toddler, mc_preschool),
+             names_to = "age_group", names_prefix = "mc_",
+             values_to = "weekly_price") |>
+  mutate(age_group = str_to_title(age_group),
+  county_region = fct_reorder2(.f = county_region,
+                               .x = study_year,
+                               .y = weekly_price)) |> 
+  ggplot(mapping = aes(x = study_year, y = weekly_price, color = county_region)) +
+  geom_point(alpha = 0.8, size = 0.6) +
+  geom_smooth(method = "loess", linewidth = 0.5) + 
+  facet_wrap(~ age_group) + 
+  labs(
+    title = "Weekly Median Price for Center-Based Childcare ($)",
+    x = "Study Year",
+    y = NULL,
+    color = "California Region"
+  ) + 
+    scale_color_manual(
+    breaks = names(region_labels),
+    labels = region_labels,
+    values = colorRampPalette(brewer.pal(8, "Accent"))(10)
+  ) +
+  scale_x_continuous(breaks = seq(2008, 2018, by = 2)) + 
+  scale_y_continuous(limits = c(100, 500)) +
+  theme_bw() +
+  theme(
+    aspect.ratio = 1,
+    axis.text = element_text(size = 6),
+    plot.title = element_text(size = 10),
+    panel.border = element_rect(color = "black", fill = NA)
+  )  
 ```
 
 -   Character (example must use functions from **stringr**)
 
 ```{r}
 #| label: wd-4-string
+# Lab 4 Question 7 Revised
+# Success comment: Nice work pivoting and modifying the age variable!Nice work reordering your legend and your facets!!!Can you match my colors??? These are coming from a package and you will need to expand the color palette to get all 10 colors.
 
+region_labels <- c(
+  san_fran_counties            = "San Francisco Bay Area",
+  inland_counties              = "Inland Empire",
+  superior_counties            = "Superior California",
+  north_coast_counties         = "North Coast",
+  central_coast_counties       = "Central Coast",
+  n_san_joaquin_counties       = "Northern San Joaquin Valley",
+  s_san_joaquin_counties       = "Southern San Joaquin Valley",
+  la_county                    = "Los Angeles County",
+  orange_county                = "Orange County",
+  san_diego_imperial_counties  = "San Diego–Imperial"
+)
+ca_childcare |>
+  pivot_longer(cols = c(mc_infant, mc_toddler, mc_preschool),
+             names_to = "age_group", names_prefix = "mc_",
+             values_to = "weekly_price") |>
+  mutate(age_group = str_to_title(age_group),
+  county_region = fct_reorder2(.f = county_region,
+                               .x = study_year,
+                               .y = weekly_price)) |> 
+  ggplot(mapping = aes(x = study_year, y = weekly_price, color = county_region)) +
+  geom_point(alpha = 0.8, size = 0.6) +
+  geom_smooth(method = "loess", linewidth = 0.5) + 
+  facet_wrap(~ age_group) + 
+  labs(
+    title = "Weekly Median Price for Center-Based Childcare ($)",
+    x = "Study Year",
+    y = NULL,
+    color = "California Region"
+  ) + 
+    scale_color_manual(
+    breaks = names(region_labels),
+    labels = region_labels,
+    values = colorRampPalette(brewer.pal(8, "Accent"))(10)
+  ) +
+  scale_x_continuous(breaks = seq(2008, 2018, by = 2)) + 
+  scale_y_continuous(limits = c(100, 500)) +
+  theme_bw() +
+  theme(
+    aspect.ratio = 1,
+    axis.text = element_text(size = 6),
+    plot.title = element_text(size = 10),
+    panel.border = element_rect(color = "black", fill = NA)
+  )  
 ```
 
 -   Date (example must use functions from **lubridate**)
 
 ```{r}
 #| label: wd-4-date
+# Lab 5, Revised
+# Success comment: Technically, the date variable was read in as an integer. Could you convert it into a date-time variable? This would give you the opportunity to demonstrate your ability to work with date variables using the lubridate package (e.g., WD-3 & WD-4).
 
+crime <- crime_scene_report |>
+  mutate(date = ymd(date)) |>
+  filter(date == "2018-01-15",        
+         type == "murder",
+         city == "SQL City")
+crime
 ```
 
 **WD-5: I can use mutating joins to combine multiple dataframes.**
@@ -188,6 +380,14 @@ income_by_region
 
 ```{r}
 #| label: wd-5-left-ex-1
+# Lab 4 Question 3, revised
+# Success comment: You already joined the counties dataset! Nice work noticing that there are two keys that need to be used for joining!
+
+ca_childcare <- ca_childcare |>
+  left_join(y = tax_rev,
+            by = join_by("county_name" == "entity_name", "study_year" == "year"))
+
+ca_childcare
 
 ```
 
@@ -195,28 +395,73 @@ income_by_region
 
 ```{r}
 #| label: wd-5-right
-
+hired <- drivers_license |>
+  right_join(person, by = c("id" = "license_id")) |>
+  filter(
+    gender == "female",
+    height >= 65, 
+    height <= 67,
+    hair_color == "red",
+    car_make == "Tesla",
+    car_model == "Model S"
+  ) |>
+  select("id", "height", "hair_color", "gender", "car_make", "car_model", "ssn", "name")
+hired
 ```
 
 -   `left_join()` **or** `right_join()` Example 2
 
 ```{r}
 #| label: wd-5-left-right-ex-2
-
+# Lab 5
+dec_symphony <- facebook_event_checkin |>
+  left_join(hired, by = c("person_id" = "id")) |>
+  filter(event_name == "SQL Symphony Concert",
+         str_starts(date,"201712")) |>
+  count(person_id, name = "n_checkins") |>
+  filter(n_checkins >= 3) |>
+  left_join(person, by = c("person_id" = "id")) |>
+  inner_join(hired, by = "name") |>
+  left_join(interview, by = "person_id")
+dec_symphony
 ```
 
 -   `inner_join()` Example 1
 
 ```{r}
 #| label: wd-5-inner-ex-1
-
+# Lab 5 Revised
+# Growing comment: It looks like you are using values from one dataset to filter another dataset rather than joining two datasets together. The intention of this lab is to practice using joins!
+# I used more joins to add the datasets person and drivers_license, so I could filter for the suspect in one pipeline. 
+gym_people <- get_fit_now_member |>
+  inner_join(get_fit_now_check_in, by = c("id" = "membership_id")) |>
+  inner_join(person, by = c("person_id" = "id")) |>
+  inner_join(drivers_license, by = c("license_id" = "id")) |>
+  filter(str_detect(check_in_date, "20180109"),
+         check_out_time >= 1600,
+         membership_status =="gold",
+         str_detect(plate_number, "H42W")
+         ) 
+gym_people
 ```
 
 -   `inner_join()` Example 2
 
 ```{r}
 #| label: wd-5-inner-ex-2
+# Lab 5
+witness1 <- person |>
+  filter(str_detect(address_street_name, "Northwestern Dr")) |>
+    slice_max(address_number) 
 
+witness2 <- person |>
+  filter(str_detect(name, "Annabel"), str_detect(address_street_name, "Franklin Ave"))
+
+witnesses <- bind_rows(witness1, witness2) |>
+  inner_join(interview, by = c("id" = "person_id"))
+
+witnesses |>
+  pull(transcript)
 ```
 
 **WD-6: I can use filtering joins to filter rows from a dataframe.**
@@ -241,7 +486,53 @@ income_by_region
 
 ```{r}
 #| label: wd-7-long
+# Lab 4 Question 7 Revised
+# Success comment: Nice work pivoting and modifying the age variable!Nice work reordering your legend and your facets!!!Can you match my colors??? These are coming from a package and you will need to expand the color palette to get all 10 colors.
 
+region_labels <- c(
+  san_fran_counties            = "San Francisco Bay Area",
+  inland_counties              = "Inland Empire",
+  superior_counties            = "Superior California",
+  north_coast_counties         = "North Coast",
+  central_coast_counties       = "Central Coast",
+  n_san_joaquin_counties       = "Northern San Joaquin Valley",
+  s_san_joaquin_counties       = "Southern San Joaquin Valley",
+  la_county                    = "Los Angeles County",
+  orange_county                = "Orange County",
+  san_diego_imperial_counties  = "San Diego–Imperial"
+)
+ca_childcare |>
+  pivot_longer(cols = c(mc_infant, mc_toddler, mc_preschool),
+             names_to = "age_group", names_prefix = "mc_",
+             values_to = "weekly_price") |>
+  mutate(age_group = str_to_title(age_group),
+  county_region = fct_reorder2(.f = county_region,
+                               .x = study_year,
+                               .y = weekly_price)) |> 
+  ggplot(mapping = aes(x = study_year, y = weekly_price, color = county_region)) +
+  geom_point(alpha = 0.8, size = 0.6) +
+  geom_smooth(method = "loess", linewidth = 0.5) + 
+  facet_wrap(~ age_group) + 
+  labs(
+    title = "Weekly Median Price for Center-Based Childcare ($)",
+    x = "Study Year",
+    y = NULL,
+    color = "California Region"
+  ) + 
+    scale_color_manual(
+    breaks = names(region_labels),
+    labels = region_labels,
+    values = colorRampPalette(brewer.pal(8, "Accent"))(10)
+  ) +
+  scale_x_continuous(breaks = seq(2008, 2018, by = 2)) + 
+  scale_y_continuous(limits = c(100, 500)) +
+  theme_bw() +
+  theme(
+    aspect.ratio = 1,
+    axis.text = element_text(size = 6),
+    plot.title = element_text(size = 10),
+    panel.border = element_rect(color = "black", fill = NA)
+  )  
 ```
 
 -   `pivot_wider()`
@@ -270,11 +561,11 @@ income_by_region
 
 The following assignments satisfy the above criteria:
 
--   Example 1
--   Example 2
--   Example 3
--   Example 4
--   Example 5
+-   Lab 2
+-   Lab 3
+-   Lab 4
+-   Lab 5
+-   Challenge 3
 
 **R-2: I can write well documented and tidy code.**
 
@@ -282,6 +573,38 @@ The following assignments satisfy the above criteria:
 
 ```{r}
 #| label: r-2-1
+# Challenge 3 Question 2, Revised
+# Success comment: Incredible work! Nice job matching the colors, the percentage labels, and the legend position! Your colors are SO close! I chose colors from the Valkyries. You can use a color picker app (or Chrome extension) to feed in a plot / website and get the hex codes for the colors out! Then you don’t have to memorize what my favorite colors are. :)
+
+ggplot(data = teacher_evals_compare) +
+  # creates bar graph 
+  geom_bar(
+    mapping = aes(x = sen_level, fill = set_level),
+    position = "fill"
+  ) +
+  # manually changes graph colors
+  scale_fill_manual(
+    values = c(
+      "excellent" = "#B897D4",  
+      "standard"  = "#BA965C"   
+    )
+  ) +
+  # adds labels for title, axes, and legend
+  labs(
+    title = "Evaluation of Teachers' Use of Activities",
+    x = "Years of Experience",
+    y = NULL,
+    fill = "Evaluation Rating"
+  ) +
+  # adjust theme to put legend at top and add border
+  theme_minimal() + 
+  theme(
+    legend.position = "top",
+    panel.border = element_rect(color = "black")
+  ) +
+  # adds percents for the y-axis
+  scale_y_continuous(labels = scales::label_percent())
+  
 
 ```
 
@@ -289,7 +612,20 @@ The following assignments satisfy the above criteria:
 
 ```{r}
 #| label: r-2-2
+# Lab 4 Question 5 Revised
+# Growing Comment: Notice that your table still has a grouping variable! Because you grouped by **two** variables, your first group was not dropped! Can you give your column names better titles, so the reader knows what "2008" and "2018" represent? What are the values stored in these columns?
+# I added .groups = "drop" to make sure that all grouping is removed. I also added prefixes to the column names to make it clear to the reader what values are in these columns. 
 
+income_by_region <- ca_childcare |>
+  filter(study_year %in% c(2008, 2018)) |>   #filters for year 2008 and 2018
+  group_by(county_region, study_year) |>   # groups by county_region and year (2008 and 2018)
+  summarize(median_income = median(mhi_2018, na.rm = TRUE), .groups = "drop") |> # calculates the median of median household income and removes all grouping
+  pivot_wider(names_from = study_year,   # changes format from long to wide
+              values_from = median_income,
+              names_prefix = "median_income_") |>
+  arrange(desc(median_income_2018))   # arranges rows by 2018 values from highest to lowest
+
+income_by_region
 ```
 
 -   Example of function formatting
@@ -305,7 +641,20 @@ The following assignments satisfy the above criteria:
 
 ```{r}
 #| label: r-3-example
+# Lab 4 Question 5 Revised
+# Growing Comment: Notice that your table still has a grouping variable! Because you grouped by **two** variables, your first group was not dropped! Can you give your column names better titles, so the reader knows what "2008" and "2018" represent? What are the values stored in these columns?
+# I added .groups = "drop" to make sure that all grouping is removed. I also added prefixes to the column names to make it clear to the reader what values are in these columns. 
 
+income_by_region <- ca_childcare |>
+  filter(study_year %in% c(2008, 2018)) |>   #filters for year 2008 and 2018
+  group_by(county_region, study_year) |>   # groups by county_region and year (2008 and 2018)
+  summarize(median_income = median(mhi_2018, na.rm = TRUE), .groups = "drop") |> # calculates the median of median household income and removes all grouping
+  pivot_wider(names_from = study_year,   # changes format from long to wide
+              values_from = median_income,
+              names_prefix = "median_income_") |>
+  arrange(desc(median_income_2018))   # arranges rows by 2018 values from highest to lowest
+
+income_by_region
 ```
 
 -   Example (function stops)
@@ -323,28 +672,152 @@ The following assignments satisfy the above criteria:
 
 ```{r}
 #| label: dvs-1-num
+# Lab 4 Question 8, Revised
+# Success comment: Wouldn’t it be nice to add $ signs before these currency values?
 
+ggplot(data = ca_childcare, mapping = aes(x = mhi_2018, y = mc_infant)) +
+  geom_point(alpha = 0.8) + 
+  geom_smooth(method = "lm") + 
+  labs(
+    x = "Median Household Income (2018)",
+    y = NULL,
+    title = "Weekly Median Price for Center-Based Childcare ($)"
+  ) + 
+  scale_x_continuous(labels = label_dollar()) + 
+  theme_bw()
 ```
 
 -   At least one numeric variable and one categorical variable
 
 ```{r}
 #| label: dvs-2-num-cat
+# Lab 2 Challenge
 
+ggplot(data = surveys,
+        mapping = aes(x = weight, y = species, color = sex)) +
+        geom_jitter(color = "#808080", alpha = 0.2) +
+        theme(axis.text.x = element_text(angle = 45)) +
+        scale_color_manual(values = c("M" = "#00008B",
+                                      "F" = "#FF0000")) +
+        geom_boxplot(outliers = FALSE) +
+        labs(
+            x = "Weight (g)",
+            y = "Species of Rodent in Portal, AZ",
+            title = "Weight of Rodent Species in Portal, AZ",
+            subtitle = "Separated by <span style =
+        'color:#00008B;'>M</span> and <span style =
+        'color:#FF0000;'>F</span> Sex") +
+        theme_bw() + 
+        theme (
+          legend.position = "none",
+          plot.subtitle = element_markdown()
+         ) 
 ```
 
 -   At least two categorical variables
 
 ```{r}
 #| label: dvs-2-cat
+# Lab 4 Question 7, Revised
+# Success comment: Nice work pivoting and modifying the age variable!Nice work reordering your legend and your facets!!!Can you match my colors??? These are coming from a package and you will need to expand the color palette to get all 10 colors.
 
+region_labels <- c(
+  san_fran_counties            = "San Francisco Bay Area",
+  inland_counties              = "Inland Empire",
+  superior_counties            = "Superior California",
+  north_coast_counties         = "North Coast",
+  central_coast_counties       = "Central Coast",
+  n_san_joaquin_counties       = "Northern San Joaquin Valley",
+  s_san_joaquin_counties       = "Southern San Joaquin Valley",
+  la_county                    = "Los Angeles County",
+  orange_county                = "Orange County",
+  san_diego_imperial_counties  = "San Diego–Imperial"
+)
+ca_childcare |>
+  pivot_longer(cols = c(mc_infant, mc_toddler, mc_preschool),
+             names_to = "age_group", names_prefix = "mc_",
+             values_to = "weekly_price") |>
+  mutate(age_group = str_to_title(age_group),
+  county_region = fct_reorder2(.f = county_region,
+                               .x = study_year,
+                               .y = weekly_price)) |> 
+  ggplot(mapping = aes(x = study_year, y = weekly_price, color = county_region)) +
+  geom_point(alpha = 0.8, size = 0.6) +
+  geom_smooth(method = "loess", linewidth = 0.5) + 
+  facet_wrap(~ age_group) + 
+  labs(
+    title = "Weekly Median Price for Center-Based Childcare ($)",
+    x = "Study Year",
+    y = NULL,
+    color = "California Region"
+  ) + 
+    scale_color_manual(
+    breaks = names(region_labels),
+    labels = region_labels,
+    values = colorRampPalette(brewer.pal(8, "Accent"))(10)
+  ) +
+  scale_x_continuous(breaks = seq(2008, 2018, by = 2)) + 
+  scale_y_continuous(limits = c(100, 500)) +
+  theme_bw() +
+  theme(
+    aspect.ratio = 1,
+    axis.text = element_text(size = 6),
+    plot.title = element_text(size = 10),
+    panel.border = element_rect(color = "black", fill = NA)
+  )  
 ```
 
 -   Dates (time series plot)
 
 ```{r}
 #| label: dvs-2-date
+# Lab 4 Question 7 Revised
+# Success comment: Nice work pivoting and modifying the age variable!Nice work reordering your legend and your facets!!!Can you match my colors??? These are coming from a package and you will need to expand the color palette to get all 10 colors.
 
+region_labels <- c(
+  san_fran_counties            = "San Francisco Bay Area",
+  inland_counties              = "Inland Empire",
+  superior_counties            = "Superior California",
+  north_coast_counties         = "North Coast",
+  central_coast_counties       = "Central Coast",
+  n_san_joaquin_counties       = "Northern San Joaquin Valley",
+  s_san_joaquin_counties       = "Southern San Joaquin Valley",
+  la_county                    = "Los Angeles County",
+  orange_county                = "Orange County",
+  san_diego_imperial_counties  = "San Diego–Imperial"
+)
+ca_childcare |>
+  pivot_longer(cols = c(mc_infant, mc_toddler, mc_preschool),
+             names_to = "age_group", names_prefix = "mc_",
+             values_to = "weekly_price") |>
+  mutate(age_group = str_to_title(age_group),
+  county_region = fct_reorder2(.f = county_region,
+                               .x = study_year,
+                               .y = weekly_price)) |> 
+  ggplot(mapping = aes(x = study_year, y = weekly_price, color = county_region)) +
+  geom_point(alpha = 0.8, size = 0.6) +
+  geom_smooth(method = "loess", linewidth = 0.5) + 
+  facet_wrap(~ age_group) + 
+  labs(
+    title = "Weekly Median Price for Center-Based Childcare ($)",
+    x = "Study Year",
+    y = NULL,
+    color = "California Region"
+  ) + 
+    scale_color_manual(
+    breaks = names(region_labels),
+    labels = region_labels,
+    values = colorRampPalette(brewer.pal(8, "Accent"))(10)
+  ) +
+  scale_x_continuous(breaks = seq(2008, 2018, by = 2)) + 
+  scale_y_continuous(limits = c(100, 500)) +
+  theme_bw() +
+  theme(
+    aspect.ratio = 1,
+    axis.text = element_text(size = 6),
+    plot.title = element_text(size = 10),
+    panel.border = element_rect(color = "black", fill = NA)
+  )  
 ```
 
 **DVS-2: I use plot modifications to make my visualization clear to the reader.**
@@ -353,35 +826,215 @@ The following assignments satisfy the above criteria:
 
 ```{r}
 #| label: dvs-2-ex-1
+# Lab 4 Question 7 Revised
+# Success comment: Nice work pivoting and modifying the age variable!Nice work reordering your legend and your facets!!!Can you match my colors??? These are coming from a package and you will need to expand the color palette to get all 10 colors.
 
+region_labels <- c(
+  san_fran_counties            = "San Francisco Bay Area",
+  inland_counties              = "Inland Empire",
+  superior_counties            = "Superior California",
+  north_coast_counties         = "North Coast",
+  central_coast_counties       = "Central Coast",
+  n_san_joaquin_counties       = "Northern San Joaquin Valley",
+  s_san_joaquin_counties       = "Southern San Joaquin Valley",
+  la_county                    = "Los Angeles County",
+  orange_county                = "Orange County",
+  san_diego_imperial_counties  = "San Diego–Imperial"
+)
+ca_childcare |>
+  pivot_longer(cols = c(mc_infant, mc_toddler, mc_preschool),
+             names_to = "age_group", names_prefix = "mc_",
+             values_to = "weekly_price") |>
+  mutate(age_group = str_to_title(age_group),
+  county_region = fct_reorder2(.f = county_region,
+                               .x = study_year,
+                               .y = weekly_price)) |> 
+  ggplot(mapping = aes(x = study_year, y = weekly_price, color = county_region)) +
+  geom_point(alpha = 0.8, size = 0.6) +
+  geom_smooth(method = "loess", linewidth = 0.5) + 
+  facet_wrap(~ age_group) + 
+  labs(
+    title = "Weekly Median Price for Center-Based Childcare ($)",
+    x = "Study Year",
+    y = NULL,
+    color = "California Region"
+  ) + 
+    scale_color_manual(
+    breaks = names(region_labels),
+    labels = region_labels,
+    values = colorRampPalette(brewer.pal(8, "Accent"))(10)
+  ) +
+  scale_x_continuous(breaks = seq(2008, 2018, by = 2)) + 
+  scale_y_continuous(limits = c(100, 500)) +
+  theme_bw() +
+  theme(
+    aspect.ratio = 1,
+    axis.text = element_text(size = 6),
+    plot.title = element_text(size = 10),
+    panel.border = element_rect(color = "black", fill = NA)
+  )  
 ```
 
 -   I can modify my colors to be accessible to anyone's eyes
 
 ```{r}
 #| label: dvs-2-ex-2
+# Lab 2 Challenge
+# Success Comment: Nice Work!
 
+ggplot(data = surveys,
+        mapping = aes(x = weight, y = species, color = sex)) +
+        geom_jitter(color = "#808080", alpha = 0.2) +
+        theme(axis.text.x = element_text(angle = 45)) +
+        scale_color_manual(values = c("M" = "#00008B",
+                                      "F" = "#FF0000")) +
+        geom_boxplot(outliers = FALSE) +
+        labs(
+            x = "Weight (g)",
+            y = "Species of Rodent in Portal, AZ",
+            title = "Weight of Rodent Species in Portal, AZ",
+            subtitle = "Separated by <span style =
+        'color:#00008B;'>M</span> and <span style =
+        'color:#FF0000;'>F</span> Sex") +
+        theme_bw() + 
+        theme (
+          legend.position = "none",
+          plot.subtitle = element_markdown()
+         ) 
+        
 ```
 
 -   I can modify my plot titles to clearly communicate the data context
 
 ```{r}
 #| label: dvs-2-ex-3
+# Lab 2 Challenge
 
+ggplot(data = surveys,
+        mapping = aes(x = weight, y = species, color = sex)) +
+        geom_jitter(color = "#808080", alpha = 0.2) +
+        theme(axis.text.x = element_text(angle = 45)) +
+        scale_color_manual(values = c("M" = "#00008B",
+                                      "F" = "#FF0000")) +
+        geom_boxplot(outliers = FALSE) +
+        labs(
+            x = "Weight (g)",
+            y = "Species of Rodent in Portal, AZ",
+            title = "Weight of Rodent Species in Portal, AZ",
+            subtitle = "Separated by <span style =
+        'color:#00008B;'>M</span> and <span style =
+        'color:#FF0000;'>F</span> Sex") +
+        theme_bw() + 
+        theme (
+          legend.position = "none",
+          plot.subtitle = element_markdown()
+         ) 
 ```
 
 -   I can modify the text in my plot to be more readable
 
 ```{r}
 #| label: dvs-2-ex-4
+# Lab 4 Question 7 Revised
+# Success comment: Nice work pivoting and modifying the age variable!Nice work reordering your legend and your facets!!!Can you match my colors??? These are coming from a package and you will need to expand the color palette to get all 10 colors.
 
+region_labels <- c(
+  san_fran_counties            = "San Francisco Bay Area",
+  inland_counties              = "Inland Empire",
+  superior_counties            = "Superior California",
+  north_coast_counties         = "North Coast",
+  central_coast_counties       = "Central Coast",
+  n_san_joaquin_counties       = "Northern San Joaquin Valley",
+  s_san_joaquin_counties       = "Southern San Joaquin Valley",
+  la_county                    = "Los Angeles County",
+  orange_county                = "Orange County",
+  san_diego_imperial_counties  = "San Diego–Imperial"
+)
+ca_childcare |>
+  pivot_longer(cols = c(mc_infant, mc_toddler, mc_preschool),
+             names_to = "age_group", names_prefix = "mc_",
+             values_to = "weekly_price") |>
+  mutate(age_group = str_to_title(age_group),
+  county_region = fct_reorder2(.f = county_region,
+                               .x = study_year,
+                               .y = weekly_price)) |> 
+  ggplot(mapping = aes(x = study_year, y = weekly_price, color = county_region)) +
+  geom_point(alpha = 0.8, size = 0.6) +
+  geom_smooth(method = "loess", linewidth = 0.5) + 
+  facet_wrap(~ age_group) + 
+  labs(
+    title = "Weekly Median Price for Center-Based Childcare ($)",
+    x = "Study Year",
+    y = NULL,
+    color = "California Region"
+  ) + 
+    scale_color_manual(
+    breaks = names(region_labels),
+    labels = region_labels,
+    values = colorRampPalette(brewer.pal(8, "Accent"))(10)
+  ) +
+  scale_x_continuous(breaks = seq(2008, 2018, by = 2)) + 
+  scale_y_continuous(limits = c(100, 500)) +
+  theme_bw() +
+  theme(
+    aspect.ratio = 1,
+    axis.text = element_text(size = 6),
+    plot.title = element_text(size = 10),
+    panel.border = element_rect(color = "black", fill = NA)
+  )  
 ```
 
 -   I can reorder my legend to align with the colors in my plot
 
 ```{r}
 #| label: dvs-2-ex-5
+# Lab 4 Question 7 Revised
+# Success comment: Nice work pivoting and modifying the age variable!Nice work reordering your legend and your facets!!!Can you match my colors??? These are coming from a package and you will need to expand the color palette to get all 10 colors.
 
+region_labels <- c(
+  san_fran_counties            = "San Francisco Bay Area",
+  inland_counties              = "Inland Empire",
+  superior_counties            = "Superior California",
+  north_coast_counties         = "North Coast",
+  central_coast_counties       = "Central Coast",
+  n_san_joaquin_counties       = "Northern San Joaquin Valley",
+  s_san_joaquin_counties       = "Southern San Joaquin Valley",
+  la_county                    = "Los Angeles County",
+  orange_county                = "Orange County",
+  san_diego_imperial_counties  = "San Diego–Imperial"
+)
+ca_childcare |>
+  pivot_longer(cols = c(mc_infant, mc_toddler, mc_preschool),
+             names_to = "age_group", names_prefix = "mc_",
+             values_to = "weekly_price") |>
+  mutate(age_group = str_to_title(age_group),
+  county_region = fct_reorder2(.f = county_region,
+                               .x = study_year,
+                               .y = weekly_price)) |> 
+  ggplot(mapping = aes(x = study_year, y = weekly_price, color = county_region)) +
+  geom_point(alpha = 0.8, size = 0.6) +
+  geom_smooth(method = "loess", linewidth = 0.5) + 
+  facet_wrap(~ age_group) + 
+  labs(
+    title = "Weekly Median Price for Center-Based Childcare ($)",
+    x = "Study Year",
+    y = NULL,
+    color = "California Region"
+  ) + 
+    scale_color_manual(
+    breaks = names(region_labels),
+    labels = region_labels,
+    values = colorRampPalette(brewer.pal(8, "Accent"))(10)
+  ) +
+  scale_x_continuous(breaks = seq(2008, 2018, by = 2)) + 
+  scale_y_continuous(limits = c(100, 500)) +
+  theme_bw() +
+  theme(
+    aspect.ratio = 1,
+    axis.text = element_text(size = 6),
+    plot.title = element_text(size = 10),
+    panel.border = element_rect(color = "black", fill = NA)
+  )  
 ```
 
 **DVS-3: I show creativity in my visualizations**
@@ -443,32 +1096,39 @@ ca_childcare |>
 
 ```{r}
 #| label: dvs-3-1-ex-2
-# Challenge 4 Question 2 Revised
-#Incredible work! Nice job matching the colors, the percentage labels, and the legend position! Your colors are SO close! I chose colors from the Valkyries. You can use a color picker app (or Chrome extension) to feed in a plot / website and get the hex codes for the colors out! Then you don’t have to memorize what my favorite colors are. :)
+# Challenge 3 Question 2 Revised
+# Success comment: Incredible work! Nice job matching the colors, the percentage labels, and the legend position! Your colors are SO close! I chose colors from the Valkyries. You can use a color picker app (or Chrome extension) to feed in a plot / website and get the hex codes for the colors out! Then you don’t have to memorize what my favorite colors are. :)
 
 ggplot(data = teacher_evals_compare) +
+  # creates bar graph 
   geom_bar(
     mapping = aes(x = sen_level, fill = set_level),
     position = "fill"
   ) +
+  # manually changes graph colors
   scale_fill_manual(
     values = c(
       "excellent" = "#B897D4",  
       "standard"  = "#BA965C"   
     )
   ) +
+  # adds labels for title, axes, and legend
   labs(
     title = "Evaluation of Teachers' Use of Activities",
     x = "Years of Experience",
     y = NULL,
     fill = "Evaluation Rating"
   ) +
+  # adjust theme to put legend at top and add border
   theme_minimal() + 
   theme(
     legend.position = "top",
     panel.border = element_rect(color = "black")
   ) +
+  # adds percents for the y-axis
   scale_y_continuous(labels = scales::label_percent())
+  
+    
 ```
 
 -   I can use annotations (e.g., `geom_text()`)
@@ -491,6 +1151,7 @@ ggplot(data = teacher_evals_compare) +
 
 ```{r}
 #| label: dvs-4-summarize
+# Lab 3 Question 6
 # Success comment: Nice work! This is an efficient way to get both summaries in one function call!
 
 teacher_evals_clean |>
@@ -514,14 +1175,34 @@ teacher_evals_clean |>
 
 ```{r}
 #| label: dvs-5-1
+# Lab 3 Question 10 Revised
+# Growing Comment: Can you do this in one call to the summarize function?Is there a function that allows you to slice the max of a specific variable? Is there a way you can get the max *and* min in **one** pipeline?
+# In office hours we discussed how slice_min and slice_max could be used, but there was an even more efficient way to find the max and min using filter. 
 
+Q10 <- teacher_evals_clean |>
+  filter(question_no == 901) |>
+  group_by(teacher_id) |> 
+  summarize(course_avg = mean(SET_score_avg), n_courses = n_distinct(course_id)) |>
+  filter(n_courses > 4) |>
+  filter(course_avg == max(course_avg) |
+         course_avg == min(course_avg))
+
+#slice_min(Q10, order_by = course_avg)
+#slice_max(Q10, order_by = course_avg)
+
+Q10
 ```
 
 -   Example 2
 
 ```{r}
 #| label: dvs-5-2
-
+# Lab 3 Question 9
+teacher_evals_clean |>
+  group_by(teacher_id, course_id) |>
+  summarize(questions = n_distinct(question_no)) |>
+  filter(questions == 9) |>
+  nrow()
 ```
 
 **DVS-6: I can create tables which make my summaries clear to the reader.**
@@ -535,13 +1216,13 @@ teacher_evals_clean |>
 # I added .groups = "drop" to make sure that all grouping is removed. I also added prefixes to the column names to make it clear to the reader what values are in these columns. 
 
 income_by_region <- ca_childcare |>
-  filter(study_year %in% c(2008, 2018)) |>
-  group_by(county_region, study_year) |>
-  summarize(median_income = median(mhi_2018, na.rm = TRUE), .groups = "drop") |>
-  pivot_wider(names_from = study_year,
+  filter(study_year %in% c(2008, 2018)) |>   #filters for year 2008 and 2018
+  group_by(county_region, study_year) |>   # groups by county_region and year (2008 and 2018)
+  summarize(median_income = median(mhi_2018, na.rm = TRUE), .groups = "drop") |> # calculates the median of median household income and removes all grouping
+  pivot_wider(names_from = study_year,   # changes format from long to wide
               values_from = median_income,
               names_prefix = "median_income_") |>
-  arrange(desc(median_income_2018))
+  arrange(desc(median_income_2018))   # arranges rows by 2018 values from highest to lowest
 
 income_by_region
 ```
@@ -584,14 +1265,26 @@ income_by_region
 
 ```{r}
 #| label: pe-1-one-call
-
+# Lab 5
+# Growing comment: It looks like you are using values from one dataset to filter another dataset rather than joining two datasets together. The intention of this lab is to practice using joins!
+# I used more joins to add the datasets person and drivers_license, so I could filter for the suspect in one pipeline.
+gym_people <- get_fit_now_member |>
+  inner_join(get_fit_now_check_in, by = c("id" = "membership_id")) |>
+  inner_join(person, by = c("person_id" = "id")) |>
+  inner_join(drivers_license, by = c("license_id" = "id")) |>
+  filter(str_detect(check_in_date, "20180109"),
+         check_out_time >= 1600,
+         membership_status == "gold",
+         str_detect(plate_number, "H42W")
+         ) 
+gym_people
 ```
 
 -   using `across()`
 
 ```{r}
 #| label: pe-1-across
-#| Lab 3 Question 5 Revised
+# Lab 3 Question 5 Revised
 # Success comment: "Nice use of across!"
 
 teacher_evals_clean <- evals |>
@@ -641,7 +1334,7 @@ teacher_evals_clean <- evals |>
 
 ```{r}
 #| label: pe-3-across
-#| Lab 3 Question 5 Revised
+# Lab 3 Question 5 Revised
 # Success comment: "Nice use of across!"
 
 teacher_evals_clean <- evals |>
@@ -675,14 +1368,62 @@ teacher_evals_clean <- evals |>
 
 ```{r}
 #| label: pe-4-1
-
+# Lab 3 Question 8, Revised
+teacher_evals_clean |>
+  filter(if_any(.cols = everything(), .fns = ~ is.na(.x)))
 ```
 
 -   I can connect a data wrangling pipeline into a `ggplot()`
 
 ```{r}
 #| label: pe-4-2
+# Lab 4 Question 7 Revised
+# Success comment: Nice work pivoting and modifying the age variable!Nice work reordering your legend and your facets!!!Can you match my colors??? These are coming from a package and you will need to expand the color palette to get all 10 colors.
 
+region_labels <- c(
+  san_fran_counties            = "San Francisco Bay Area",
+  inland_counties              = "Inland Empire",
+  superior_counties            = "Superior California",
+  north_coast_counties         = "North Coast",
+  central_coast_counties       = "Central Coast",
+  n_san_joaquin_counties       = "Northern San Joaquin Valley",
+  s_san_joaquin_counties       = "Southern San Joaquin Valley",
+  la_county                    = "Los Angeles County",
+  orange_county                = "Orange County",
+  san_diego_imperial_counties  = "San Diego–Imperial"
+)
+ca_childcare |>
+  pivot_longer(cols = c(mc_infant, mc_toddler, mc_preschool),
+             names_to = "age_group", names_prefix = "mc_",
+             values_to = "weekly_price") |>
+  mutate(age_group = str_to_title(age_group),
+  county_region = fct_reorder2(.f = county_region,
+                               .x = study_year,
+                               .y = weekly_price)) |> 
+  ggplot(mapping = aes(x = study_year, y = weekly_price, color = county_region)) +
+  geom_point(alpha = 0.8, size = 0.6) +
+  geom_smooth(method = "loess", linewidth = 0.5) + 
+  facet_wrap(~ age_group) + 
+  labs(
+    title = "Weekly Median Price for Center-Based Childcare ($)",
+    x = "Study Year",
+    y = NULL,
+    color = "California Region"
+  ) + 
+    scale_color_manual(
+    breaks = names(region_labels),
+    labels = region_labels,
+    values = colorRampPalette(brewer.pal(8, "Accent"))(10)
+  ) +
+  scale_x_continuous(breaks = seq(2008, 2018, by = 2)) + 
+  scale_y_continuous(limits = c(100, 500)) +
+  theme_bw() +
+  theme(
+    aspect.ratio = 1,
+    axis.text = element_text(size = 6),
+    plot.title = element_text(size = 10),
+    panel.border = element_rect(color = "black", fill = NA)
+  )  
 ```
 
 ## Data Simulation & Statisical Models
@@ -709,6 +1450,11 @@ teacher_evals_clean <- evals |>
 
 ```{r}
 #| label: dsm-2-1
+# Lab 4 Question 9, Revised
+# Growing comment: Which variable should be x and y in lm()? This should match what you did in your plot!
+# I corrected the x and y variables to be in the correct location in the model. 
+reg_mod1 <- lm(mc_infant ~ mhi_2018, data = ca_childcare)
+summary(reg_mod1)
 
 ```
 
@@ -716,6 +1462,9 @@ teacher_evals_clean <- evals |>
 
 ```{r}
 #| label: dsm-2-2
+# Lab 2 Question 17, Revised
+# Success comment: Do you need to save an object here? All I want is to see the output...
+summary(aov(weight ~ species, data = surveys))
 
 ```
 
@@ -732,12 +1481,24 @@ teacher_evals_clean <- evals |>
 
 <!-- For the revisions included in your Portfolio, to help me understand the nature of your revisions, please denote somehow the feedback I provided you (e.g., boldface, italics, colored text) before your revisions. -->
 
+I've revised my thinking with each assignment I completed by addressing and applying feedback I received. I have looked at every comment I have received on all of my assignments. I have revised all of my growing areas and worked to improve my success areas when possible. When I was unsure about a comment I received or if my revisions were sufficient, I sought further feedback through Office Hours and revision submissions. Although my code was not always satisfactory on my first attempt, I learned from the feedback I received, and brought this understanding to future assignments. In my portfolio, I revised my code both to make sure the learning targets were met and to address each growing or success comment. Finally, drafting this portfolio has provided me with the opportunity to take a second or even third look at my success and growing areas.
+
 ## Extending My Thinking
 
 <!-- How did you extended your thinking throughout the course? How did you extend your thinking on the code examples you have provided in your portfolio? -->
+
+To extend my thinking, I utilized my resources outside the classroom and challenged myself to find the most efficient methods. For example, when I wrote code that seemed inefficient, I would use ChatGPT as a tutor to guide me and help me understand other methods I could use to improve my code. I made an effort to use AI as a tool rather than a crutch. Additionally, when I wanted to do a novel task but did not know how to accomplish it, I would use Google to find a new function, a different theme, unique color palette, etc. For this portfolio, I addressed every success and growing comment I received to make my code as tidy and efficient as possible. I also used the Example Portfolio on the Course Website to reference what good code should look like.
 
 ## Peer Support & Collaboration
 
 <!-- Include an image or a description of feedback you gave that you are proud of (either in a peer review or in Discord). -->
 
 <!-- Include a description of how you grew as a collaborator through the weekly pair programming activities.   -->
+
+I supported my peers and grew as a collaborator by providing helpful feedback on labs, asking questions on discord, and being a team player in pair programming activities.
+
+Here is feedback I gave that is supportive and helpful. I addressed what they did well and as well as areas for improvement.
+
+"Great work! Your code is very tidy, efficient, and easy to follow. You used joins well to limit the suspect down to Miranda. I like the way you used the pull () function to pull the information you want. One optional thing you could do is convert the date to a date-time variable to work with lubridate, which is a learning objective for the midterm portfolio. Additionally, I believe the last step in the lab is to interview Miranda to check that she is the correct person. Those are the only couple of suggestions I have. Keep up the good work!"
+
+During the pair programming activities I grew as a collaborator by working with my partner to solve each question as a team. When it was my turn to type, I actively listened to my partner's code and respectfully suggested my input only when appropriate. When it was my partners turn to type I told my partner how I thought we should write the code. When neither my partner nor I could figure out a problem, we problem solved as a team or asked for help.
