@@ -38,7 +38,13 @@ evals <- read_csv(here::here("Week 3", "Lab 3", "teacher_evals.csv"))
 
 ```{r}
 #| label: wd-1-xlsx
-
+# Practice Activity 4
+military <- read_xlsx("gov_spending_per_capita.xlsx",
+                      sheet = "Share of Govt. spending",
+                      skip  = 7,
+                      n_max = 190,
+                      na = c("..", "xxx", ". .")
+                      )
 ```
 
 **WD-2: I can select necessary columns from a dataset.**
@@ -65,12 +71,63 @@ teacher_evals_clean <- evals |>
 
 ```{r}
 #| label: wd-2-ex-2
-# Lab 5
-interview_suspect <- interview |>
-  filter(person_id == 67318) |>
-  select(-person_id)
-
-interview_suspect
+# Lab 9, Question 6, Revised
+# Growing Comment: There is no table being output! 
+# I accidentally called sex gender, so the table didn't output.
+evals |>
+  distinct(teacher_id, .keep_all = TRUE) |>
+  mutate(
+    academic_degree = fct_recode(
+      academic_degree,
+      "Doctorate" = "dr",
+      "Masters" = "ma",
+      "No Degree" = "no_dgr",
+      "Tenured Professor" = "prof"
+    ),
+    sex = fct_recode(
+      sex,
+      "Male" = "male",
+      "Female" = "female"
+    ),
+    seniority_group = case_when(
+      seniority %in% 1:4 ~ "Junior",
+      seniority %in% 5:8 ~ "Senior",
+      seniority %in% 9:12 ~ "Very Senior"
+    ) |>
+      factor(levels = c("Junior", "Senior", "Very Senior"))
+  ) |>
+  select(
+    academic_degree,
+    seniority = seniority_group,
+    sex
+  ) |>
+  pivot_longer(
+    cols = c(academic_degree, seniority, sex),
+    names_to = "Variable",
+    values_to = "Level"
+  ) |>
+  mutate(
+    Variable = case_when(
+      Variable == "academic_degree" ~ "Academic Degree",
+      Variable == "seniority" ~ "Seniority",
+      Variable == "sex" ~ "Sex"
+    )
+  ) |>
+  count(Variable, Level, name = "Count") |>
+  group_by(Variable) |>
+  mutate(`%` = Count / sum(Count)) |>
+  mutate(`%` = percent(`%`, accuracy = 0.01)) |>
+  ungroup() |>
+  select(-Variable) |>                                 # removing column here!
+  kable() |>
+  kable_styling(full_width = FALSE) |>
+  pack_rows(index = c("Academic Degree" = 4, "Seniority" = 3, "Sex" = 2),
+            start_row = 1,
+            label_row_css = "background-color: #afad8f") |>
+  add_header_above(c(" " = 1, "Professors" = 2)) |> 
+  add_header_above(c("Student Evaluations at the University of Poland--Warsaw in 2020" = 3),
+                   font_size = 10) |>
+  add_header_above(c("Demographics of Professors" = 3))
 ```
 
 -   Example selecting columns based on logical values (e.g., `starts_with()`, `ends_with()`, `contains()`, `where()`)
@@ -126,7 +183,7 @@ ca_childcare |>
   )  
 ```
 
-**WD-3: I can filter rows from a dataframe for a *variety* of data types (e.g., numeric, integer, character, factor, date).**
+**WD-3: I can filter rows from a data frame for a *variety* of data types (e.g., numeric, integer, character, factor, date).**
 
 -   Numeric Example 1
 
@@ -153,7 +210,7 @@ income_by_region
 ```{r}
 #| label: wd-3-numeric-ex-2
 # Lab 3 Question 10 Revised
-# Growing Comment: Can you do this in one call to the summarize function?Is there a function that allows you to slice the max of a specific variable? Is there a way you can get the max *and* min in **one** pipeline?
+# Growing Comment: Can you do this in one call to the summarize function? Is there a function that allows you to slice the max of a specific variable? Is there a way you can get the max *and* min in **one** pipeline?
 # In office hours we discussed how slice_min and slice_max could be used, but there was an even more efficient way to find the max and min using filter. 
 
 Q10 <- teacher_evals_clean |>
@@ -179,9 +236,9 @@ Q10
 # I had originally filtered by CA FIPS codes to filter for the state being CA because I didn't realize that state was a variable. I revised the code to be much simpler to just filter for the state being CA.
 
 ca_childcare <- childcare_costs |>
-  left_join(y = counties, by = "county_fips_code") |>
-  filter(state_abbreviation == "CA")
-
+  filter(state_abbreviation == "CA") |>
+  left_join(y = counties, by = join_by(county_fips_code))
+  
 ca_childcare
 ```
 
@@ -189,15 +246,18 @@ ca_childcare
 
 ```{r}
 #| label: wd-3-string
-# Lab 4 Question 2 Unrevised
-# Success Comment: Why these FIPS codes? Are these for CA? If so, why not just filter for the state being CA?
-# My unrevised code is not the most efficent for this task, but it is a good example of filtering with a stringr function. 
-
-ca_childcare <- childcare_costs |>
-  filter(str_starts(county_fips_code, "60") | str_starts(county_fips_code, "61")) |>
-  left_join(y = counties,
-            by = "county_fips_code") # "match rows where county_fips_code in my filtered childcare dataset equals county_fips code in the counties dataset"
-ca_childcare
+# Lab 5, Revised
+# Growing comment: It looks like you are using values from one dataset to filter another dataset rather than joining two datasets together. The intention of this lab is to practice using joins!
+# I filtered through the person dataset and then joined this dataset to the interview dataset. 
+# I used join_by instead of by = c()
+person |>
+  filter(
+    (address_street_name == "Northwestern Dr" & 
+     address_number == max(address_number)) | 
+    (str_detect(name, "Annabel") &
+    address_street_name == "Franklin Ave")) |>
+  left_join(interview, by = join_by(id == person_id)) |>
+  select(transcript)
 ```
 
 -   Date (example must use functions from **lubridate**)
@@ -209,7 +269,7 @@ ca_childcare
 
 crime <- crime_scene_report |>
   mutate(date = ymd(date)) |>
-  filter(date == "2018-01-15",        
+  filter(date == ymd("2018-01-15"),        
          type == "murder",
          city == "SQL City")
 crime
@@ -243,14 +303,76 @@ teacher_evals_compare
 
 ```{r}
 #| label: wd-4-numeric-ex-2
-
+# Challenge 3 Question 1, Revised
+# I mutated the question_no variable to remove the "90" from the start of each number.
+teacher_evals_compare <- evals |>
+  group_by(course_id) |>
+  mutate(
+    question_no = as.numeric(str_remove(as.character(question_no), "^90")),
+    set_level = if_else(SET_score_avg >= 4, "excellent", "standard"),
+    sen_level = case_when(
+      seniority <= 4 ~ "junior", 
+      seniority >=5 & seniority <= 8 ~ "senior",
+      seniority > 8 ~ "very senior"
+      )
+    ) |>
+  filter(question_no == 3) |>
+  select(course_id, set_level, sen_level)
+teacher_evals_compare
 ```
 
 -   Factor Example 1 (renaming levels)
 
 ```{r}
 #| label: wd-4-factor-ex-1
-
+evals |>
+  distinct(teacher_id, .keep_all = TRUE) |>
+  mutate(
+    academic_degree = fct_recode(
+      academic_degree,
+      "Doctorate" = "dr",
+      "Masters" = "ma",
+      "No Degree" = "no_dgr",
+      "Tenured Professor" = "prof"
+    ),
+    sex = fct_recode(
+      sex,
+      "Male" = "male",
+      "Female" = "female"
+    ),
+    seniority_group = case_when(
+      seniority %in% 1:4 ~ "Junior",
+      seniority %in% 5:8 ~ "Senior",
+      seniority %in% 9:12 ~ "Very Senior"
+    ),
+    seniority_group = factor(
+      seniority_group,
+      levels = c("Junior", "Senior", "Very Senior")
+    )
+  ) |>
+  select(
+    academic_degree,
+    seniority = seniority_group,
+    sex
+  ) |>
+  pivot_longer(
+    cols = c(academic_degree, seniority, sex),
+    names_to = "Variable",
+    values_to = "Level"
+  ) |>
+  mutate(
+    Variable = case_when(
+      Variable == "academic_degree" ~ "Academic Degree",
+      Variable == "seniority" ~ "Seniority",
+      Variable == "sex" ~ "Sex"
+    )
+  ) |>
+  count(Variable, Level) |>
+  group_by(Variable) |>
+  mutate(prop = n / sum(n)) |>
+  ungroup() |>
+  kable() |>
+  kable_styling(full_width = FALSE, bootstrap_options = "striped")
 ```
 
 -   Factor Example 2 (reordering levels)
@@ -312,6 +434,7 @@ ca_childcare |>
 #| label: wd-4-string
 # Lab 4 Question 7 Revised
 # Success comment: Nice work pivoting and modifying the age variable!Nice work reordering your legend and your facets!!!Can you match my colors??? These are coming from a package and you will need to expand the color palette to get all 10 colors.
+# Revised from midterm: I added dollar signs on the y-axis.
 
 region_labels <- c(
   san_fran_counties            = "San Francisco Bay Area",
@@ -326,10 +449,10 @@ region_labels <- c(
   san_diego_imperial_counties  = "San Diego–Imperial"
 )
 ca_childcare |>
-  pivot_longer(cols = c(mc_infant, mc_toddler, mc_preschool),
+  pivot_longer(cols = starts_with("mc_"),
              names_to = "age_group", names_prefix = "mc_",
              values_to = "weekly_price") |>
-  mutate(age_group = str_to_title(age_group),
+  mutate(age_group = str_to_title(age_group),  #stringr function for this portfolio checkpoint 
   county_region = fct_reorder2(.f = county_region,
                                .x = study_year,
                                .y = weekly_price)) |> 
@@ -344,12 +467,17 @@ ca_childcare |>
     color = "California Region"
   ) + 
     scale_color_manual(
-    breaks = names(region_labels),
-    labels = region_labels,
-    values = colorRampPalette(brewer.pal(8, "Accent"))(10)
+      breaks = names(region_labels),
+      labels = region_labels,
+      values = colorRampPalette(brewer.pal(8, "Accent"))(10)
   ) +
-  scale_x_continuous(breaks = seq(2008, 2018, by = 2)) + 
-  scale_y_continuous(limits = c(100, 500)) +
+  scale_x_continuous(
+    breaks = seq(2008, 2018, by = 2),
+    ) +
+  scale_y_continuous(
+    limits = c(100, 500),
+    labels = label_currency()
+  ) +
   theme_bw() +
   theme(
     aspect.ratio = 1,
@@ -368,7 +496,7 @@ ca_childcare |>
 
 crime <- crime_scene_report |>
   mutate(date = ymd(date)) |>
-  filter(date == "2018-01-15",        
+  filter(date == ymd("2018-01-15"),        
          type == "murder",
          city == "SQL City")
 crime
@@ -382,10 +510,11 @@ crime
 #| label: wd-5-left-ex-1
 # Lab 4 Question 3, revised
 # Success comment: You already joined the counties dataset! Nice work noticing that there are two keys that need to be used for joining!
+# Revised from midterm portfolio: I used the most modern syntax: join_by() instead of c().
 
 ca_childcare <- ca_childcare |>
   left_join(y = tax_rev,
-            by = join_by("county_name" == "entity_name", "study_year" == "year"))
+            by = join_by(county_name == entity_name, study_year == year))
 
 ca_childcare
 
@@ -395,8 +524,10 @@ ca_childcare
 
 ```{r}
 #| label: wd-5-right
+# Lab 5, Revised
+# Revised from midterm portfolio: I used the most modern syntax: join_by() instead of c().
 hired <- drivers_license |>
-  right_join(person, by = c("id" = "license_id")) |>
+  right_join(person, by = join_by(id == license_id)) |>
   filter(
     gender == "female",
     height >= 65, 
@@ -420,9 +551,9 @@ dec_symphony <- facebook_event_checkin |>
          str_starts(date,"201712")) |>
   count(person_id, name = "n_checkins") |>
   filter(n_checkins >= 3) |>
-  left_join(person, by = c("person_id" = "id")) |>
-  inner_join(hired, by = "name") |>
-  left_join(interview, by = "person_id")
+  left_join(person, by = join_by(person_id == id)) |>
+  inner_join(hired, by = join_by(name)) |>
+  left_join(interview, by = join_by(person_id))
 dec_symphony
 ```
 
@@ -434,9 +565,9 @@ dec_symphony
 # Growing comment: It looks like you are using values from one dataset to filter another dataset rather than joining two datasets together. The intention of this lab is to practice using joins!
 # I used more joins to add the datasets person and drivers_license, so I could filter for the suspect in one pipeline. 
 gym_people <- get_fit_now_member |>
-  inner_join(get_fit_now_check_in, by = c("id" = "membership_id")) |>
-  inner_join(person, by = c("person_id" = "id")) |>
-  inner_join(drivers_license, by = c("license_id" = "id")) |>
+  inner_join(get_fit_now_check_in, by = join_by(id == membership_id)) |>
+  inner_join(person, by = join_by(person_id == id)) |>
+  inner_join(drivers_license, by = join_by(license_id == id)) |>
   filter(str_detect(check_in_date, "20180109"),
          check_out_time >= 1600,
          membership_status =="gold",
@@ -450,18 +581,17 @@ gym_people
 ```{r}
 #| label: wd-5-inner-ex-2
 # Lab 5
-witness1 <- person |>
-  filter(str_detect(address_street_name, "Northwestern Dr")) |>
-    slice_max(address_number) 
-
-witness2 <- person |>
-  filter(str_detect(name, "Annabel"), str_detect(address_street_name, "Franklin Ave"))
-
-witnesses <- bind_rows(witness1, witness2) |>
-  inner_join(interview, by = c("id" = "person_id"))
-
-witnesses |>
-  pull(transcript)
+# REVISED WHYYY
+dec_symphony <- facebook_event_checkin |>
+  left_join(hired, by = c("person_id" = "id")) |>
+  filter(event_name == "SQL Symphony Concert",
+         str_starts(date,"201712")) |>
+  count(person_id, name = "n_checkins") |>
+  filter(n_checkins >= 3) |>
+  left_join(person, by = join_by(person_id == id)) |>
+  inner_join(hired, by = join_by(name)) |>
+  left_join(interview, by = join_by(person_id))
+dec_symphony
 ```
 
 **WD-6: I can use filtering joins to filter rows from a dataframe.**
@@ -470,13 +600,36 @@ witnesses |>
 
 ```{r}
 #| label: wd-6-semi
+# Lab 5, Revised 
 
+interview |>
+  semi_join(suspects, 
+    by = join_by(person_id)) |>
+  select(transcript)
 ```
 
 -   `anti_join()`
 
 ```{r}
 #| label: wd-6-anti
+# Lab 4, Question 5, Revised
+# Instead of filtering for the years 2008 and 2018, Dr. Theobold helped me find a way to use an anti_join. I created a new dataset that contains all the years other than 2008 and 2018. Then I anti_joined this dataset to get years 2008 and 2018.
+# Growing Comment: Notice that your table still has a grouping variable! Because you grouped by **two** variables, your first group was not dropped!
+#Can you give your column names better titles, so the reader knows what "2008" and "2018" represent? What are the values stored in these columns?
+# I used .groups = "drop" to drop all groups. I also used better column names that were more descriptive, instead of just the year. 
+
+ca_childcare_years <- ca_childcare |> #NEW DATASET
+  filter(!study_year %in% c(2008, 2018)) 
+
+
+income_by_region <- ca_childcare |>
+  anti_join(ca_childcare_years, by = join_by("study_year")) |> #ANTIJOIN WITH DATASET ABOVE
+  group_by(county_region, study_year) |>   # groups by county_region and year (2008 and 2018)
+  summarize(median_income = median(mhi_2018, na.rm = TRUE), .groups = "drop") |> # calculates the median of median household income and removes all grouping
+  pivot_wider(names_from = study_year,   # changes format from long to wide
+              values_from = median_income,
+              names_prefix = "median_income_") |>
+  arrange(desc(median_income_2018))   # arranges rows by 2018 values from highest to lowest
 
 ```
 
@@ -488,6 +641,7 @@ witnesses |>
 #| label: wd-7-long
 # Lab 4 Question 7 Revised
 # Success comment: Nice work pivoting and modifying the age variable!Nice work reordering your legend and your facets!!!Can you match my colors??? These are coming from a package and you will need to expand the color palette to get all 10 colors.
+# Revised from midterm: I added dollar signs on the y-axis.
 
 region_labels <- c(
   san_fran_counties            = "San Francisco Bay Area",
@@ -502,7 +656,7 @@ region_labels <- c(
   san_diego_imperial_counties  = "San Diego–Imperial"
 )
 ca_childcare |>
-  pivot_longer(cols = c(mc_infant, mc_toddler, mc_preschool),
+  pivot_longer(cols = starts_with("mc_"),
              names_to = "age_group", names_prefix = "mc_",
              values_to = "weekly_price") |>
   mutate(age_group = str_to_title(age_group),
@@ -520,12 +674,17 @@ ca_childcare |>
     color = "California Region"
   ) + 
     scale_color_manual(
-    breaks = names(region_labels),
-    labels = region_labels,
-    values = colorRampPalette(brewer.pal(8, "Accent"))(10)
+      breaks = names(region_labels),
+      labels = region_labels,
+      values = colorRampPalette(brewer.pal(8, "Accent"))(10)
   ) +
-  scale_x_continuous(breaks = seq(2008, 2018, by = 2)) + 
-  scale_y_continuous(limits = c(100, 500)) +
+  scale_x_continuous(
+    breaks = seq(2008, 2018, by = 2),
+    ) +
+  scale_y_continuous(
+    limits = c(100, 500),
+    labels = label_currency()
+  ) +
   theme_bw() +
   theme(
     aspect.ratio = 1,
@@ -632,7 +791,22 @@ income_by_region
 
 ```{r}
 #| label: r-2-3
+# Lab 8, Revised
+# Growing Comment: Is there an argument in pivot_wider() that will fill in the NAs with 0s? Input checks for data frame functions are tricky, but an easy one is to check if the data frame being input is actually a data frame (not a vector or a matrix).
+# I revised my code to use values_fill = 0 instead of mutate and I added an input check. 
 
+pivot_table <- function(df, row_var, col_var) {
+  stopifnot("Input must be a data frame" = is.data.frame(df)) # input validation
+  
+  df |>
+    count( {{ row_var }}, {{ col_var }}) |> # count frequency for each row and column combination
+    pivot_wider(
+      names_from = {{ col_var }}, # columns names are from col_var
+      values_from = n,            # cell values are from counts
+      values_fill = 0             # fills missing values with 0
+    ) |> 
+    janitor::adorn_totals(where = c("row", "col")) # adds row and column totals
+}
 ```
 
 **R-3: I can write robust programs that are resistant to changes in inputs.**
@@ -641,26 +815,54 @@ income_by_region
 
 ```{r}
 #| label: r-3-example
-# Lab 4 Question 5 Revised
-# Growing Comment: Notice that your table still has a grouping variable! Because you grouped by **two** variables, your first group was not dropped! Can you give your column names better titles, so the reader knows what "2008" and "2018" represent? What are the values stored in these columns?
-# I added .groups = "drop" to make sure that all grouping is removed. I also added prefixes to the column names to make it clear to the reader what values are in these columns. 
+# Lab 8, Question 3, Revised
+# Growing Comment: Input checks for data frame functions are tricky, but an easy one is to check if the data frame being input is actually a data frame (not a vector or a matrix).
+#Nice work including color in your plots! Technically, your legend has the same information as your facets, so I would recommend removing it. We don't want to have redundant information in our plots!
+#You should use:
+#theme(legend_position = “none")
+# I added a function check to check if the data frame input is a data frame. I also removed the legend from the plot because it contained redundannt information.
 
-income_by_region <- ca_childcare |>
-  filter(study_year %in% c(2008, 2018)) |>   #filters for year 2008 and 2018
-  group_by(county_region, study_year) |>   # groups by county_region and year (2008 and 2018)
-  summarize(median_income = median(mhi_2018, na.rm = TRUE), .groups = "drop") |> # calculates the median of median household income and removes all grouping
-  pivot_wider(names_from = study_year,   # changes format from long to wide
-              values_from = median_income,
-              names_prefix = "median_income_") |>
-  arrange(desc(median_income_2018))   # arranges rows by 2018 values from highest to lowest
+create_plot <- function(df, x_var, y_var, group) {
+  stopifnot("Input must be a data frame" = is.data.frame(df))
+  x_label <- as_label(enquo(x_var)) |>
+    str_replace_all(pattern = "_", replacement = " ")
+  y_label <- as_label(enquo(y_var)) |>
+    str_replace_all(pattern = "_", replacement = " ")
+  g_label <- as_label(enquo(group)) |>
+    str_replace_all(pattern = "_", replacement = " ")
+  
+  df |>
+    ggplot(mapping = aes(x = {{ x_var }}, y = {{ y_var }}, color = {{ group }})) +
+      geom_point(na.rm = TRUE) +
+      geom_smooth(method = "lm", formula = y ~ x, se = FALSE, na.rm = TRUE) + 
+      facet_wrap(vars({{ group }}),
+                 scales = "free_x") + 
+      labs(
+        x = x_label,
+        y = y_label,
+        title = str_to_title(paste("Relationship between", y_label, "and", x_label, "by", g_label))
+      ) + 
+      theme_bw() +
+      theme(legend.position = "none") 
+}
 
-income_by_region
 ```
 
 -   Example (function stops)
 
 ```{r}
 #| label: r-3-function-stops
+# Challenge 7, Question 4, Revised 
+# Growing Comment: Where are your function checks? What types of inputs does your function expect?
+# I added function checks to make my program resistant to incorrect inputs. 
+calculate_index <- function(weight, length) {
+  stopifnot("Input must be numeric" = is.numeric(weight),
+            "Input must be numeric" = is.numeric(length),
+            "Weight must be positive" = weight > 0,
+            "Length must be positive" = length > 0)
+  index = weight / (length^3) * 100
+  return(index)
+}
 
 ```
 
@@ -674,6 +876,7 @@ income_by_region
 #| label: dvs-1-num
 # Lab 4 Question 8, Revised
 # Success comment: Wouldn’t it be nice to add $ signs before these currency values?
+# Revised from midterm: I used label_currency() instead of label_dollar(). 
 
 ggplot(data = ca_childcare, mapping = aes(x = mhi_2018, y = mc_infant)) +
   geom_point(alpha = 0.8) + 
@@ -683,7 +886,7 @@ ggplot(data = ca_childcare, mapping = aes(x = mhi_2018, y = mc_infant)) +
     y = NULL,
     title = "Weekly Median Price for Center-Based Childcare ($)"
   ) + 
-  scale_x_continuous(labels = label_dollar()) + 
+  scale_x_continuous(labels = label_currency()) + 
   theme_bw()
 ```
 
@@ -692,11 +895,11 @@ ggplot(data = ca_childcare, mapping = aes(x = mhi_2018, y = mc_infant)) +
 ```{r}
 #| label: dvs-2-num-cat
 # Lab 2 Challenge
+# Revised from midterm: I had tilted the x axis labels for no reason, so I just got rid of that.
 
 ggplot(data = surveys,
         mapping = aes(x = weight, y = species, color = sex)) +
         geom_jitter(color = "#808080", alpha = 0.2) +
-        theme(axis.text.x = element_text(angle = 45)) +
         scale_color_manual(values = c("M" = "#00008B",
                                       "F" = "#FF0000")) +
         geom_boxplot(outliers = FALSE) +
@@ -718,53 +921,38 @@ ggplot(data = surveys,
 
 ```{r}
 #| label: dvs-2-cat
-# Lab 4 Question 7, Revised
-# Success comment: Nice work pivoting and modifying the age variable!Nice work reordering your legend and your facets!!!Can you match my colors??? These are coming from a package and you will need to expand the color palette to get all 10 colors.
+# Challenge 3 Question 2 Revised
+# Success comment: Incredible work! Nice job matching the colors, the percentage labels, and the legend position! Your colors are SO close! I chose colors from the Valkyries. You can use a color picker app (or Chrome extension) to feed in a plot / website and get the hex codes for the colors out! Then you don’t have to memorize what my favorite colors are. :)
 
-region_labels <- c(
-  san_fran_counties            = "San Francisco Bay Area",
-  inland_counties              = "Inland Empire",
-  superior_counties            = "Superior California",
-  north_coast_counties         = "North Coast",
-  central_coast_counties       = "Central Coast",
-  n_san_joaquin_counties       = "Northern San Joaquin Valley",
-  s_san_joaquin_counties       = "Southern San Joaquin Valley",
-  la_county                    = "Los Angeles County",
-  orange_county                = "Orange County",
-  san_diego_imperial_counties  = "San Diego–Imperial"
-)
-ca_childcare |>
-  pivot_longer(cols = c(mc_infant, mc_toddler, mc_preschool),
-             names_to = "age_group", names_prefix = "mc_",
-             values_to = "weekly_price") |>
-  mutate(age_group = str_to_title(age_group),
-  county_region = fct_reorder2(.f = county_region,
-                               .x = study_year,
-                               .y = weekly_price)) |> 
-  ggplot(mapping = aes(x = study_year, y = weekly_price, color = county_region)) +
-  geom_point(alpha = 0.8, size = 0.6) +
-  geom_smooth(method = "loess", linewidth = 0.5) + 
-  facet_wrap(~ age_group) + 
-  labs(
-    title = "Weekly Median Price for Center-Based Childcare ($)",
-    x = "Study Year",
-    y = NULL,
-    color = "California Region"
-  ) + 
-    scale_color_manual(
-    breaks = names(region_labels),
-    labels = region_labels,
-    values = colorRampPalette(brewer.pal(8, "Accent"))(10)
+ggplot(data = teacher_evals_compare) +
+  # creates bar graph 
+  geom_bar(
+    mapping = aes(x = sen_level, fill = set_level),
+    position = "fill"
   ) +
-  scale_x_continuous(breaks = seq(2008, 2018, by = 2)) + 
-  scale_y_continuous(limits = c(100, 500)) +
-  theme_bw() +
+  # manually changes graph colors
+  scale_fill_manual(
+    values = c(
+      "excellent" = "#B897D4",  
+      "standard"  = "#BA965C"   
+    )
+  ) +
+  # adds labels for title, axes, and legend
+  labs(
+    title = "Evaluation of Teachers' Use of Activities",
+    x = "Years of Experience",
+    y = NULL,
+    fill = "Evaluation Rating"
+  ) +
+  # adjust theme to put legend at top and add border
+  theme_minimal() + 
   theme(
-    aspect.ratio = 1,
-    axis.text = element_text(size = 6),
-    plot.title = element_text(size = 10),
-    panel.border = element_rect(color = "black", fill = NA)
-  )  
+    legend.position = "top",
+    panel.border = element_rect(color = "black")
+  ) +
+  # adds percents for the y-axis
+  scale_y_continuous(labels = scales::label_percent())
+
 ```
 
 -   Dates (time series plot)
@@ -773,6 +961,7 @@ ca_childcare |>
 #| label: dvs-2-date
 # Lab 4 Question 7 Revised
 # Success comment: Nice work pivoting and modifying the age variable!Nice work reordering your legend and your facets!!!Can you match my colors??? These are coming from a package and you will need to expand the color palette to get all 10 colors.
+# Revised from midterm: I added dollar signs on the y-axis.
 
 region_labels <- c(
   san_fran_counties            = "San Francisco Bay Area",
@@ -787,7 +976,7 @@ region_labels <- c(
   san_diego_imperial_counties  = "San Diego–Imperial"
 )
 ca_childcare |>
-  pivot_longer(cols = c(mc_infant, mc_toddler, mc_preschool),
+  pivot_longer(cols = starts_with("mc_"),
              names_to = "age_group", names_prefix = "mc_",
              values_to = "weekly_price") |>
   mutate(age_group = str_to_title(age_group),
@@ -805,12 +994,17 @@ ca_childcare |>
     color = "California Region"
   ) + 
     scale_color_manual(
-    breaks = names(region_labels),
-    labels = region_labels,
-    values = colorRampPalette(brewer.pal(8, "Accent"))(10)
+      breaks = names(region_labels),
+      labels = region_labels,
+      values = colorRampPalette(brewer.pal(8, "Accent"))(10)
   ) +
-  scale_x_continuous(breaks = seq(2008, 2018, by = 2)) + 
-  scale_y_continuous(limits = c(100, 500)) +
+  scale_x_continuous(
+    breaks = seq(2008, 2018, by = 2),
+    ) +
+  scale_y_continuous(
+    limits = c(100, 500),
+    labels = label_currency()
+  ) +
   theme_bw() +
   theme(
     aspect.ratio = 1,
@@ -828,6 +1022,7 @@ ca_childcare |>
 #| label: dvs-2-ex-1
 # Lab 4 Question 7 Revised
 # Success comment: Nice work pivoting and modifying the age variable!Nice work reordering your legend and your facets!!!Can you match my colors??? These are coming from a package and you will need to expand the color palette to get all 10 colors.
+# Revised from midterm: I added dollar signs on the y-axis.
 
 region_labels <- c(
   san_fran_counties            = "San Francisco Bay Area",
@@ -842,7 +1037,7 @@ region_labels <- c(
   san_diego_imperial_counties  = "San Diego–Imperial"
 )
 ca_childcare |>
-  pivot_longer(cols = c(mc_infant, mc_toddler, mc_preschool),
+  pivot_longer(cols = starts_with("mc_"),
              names_to = "age_group", names_prefix = "mc_",
              values_to = "weekly_price") |>
   mutate(age_group = str_to_title(age_group),
@@ -860,19 +1055,24 @@ ca_childcare |>
     color = "California Region"
   ) + 
     scale_color_manual(
-    breaks = names(region_labels),
-    labels = region_labels,
-    values = colorRampPalette(brewer.pal(8, "Accent"))(10)
+      breaks = names(region_labels),
+      labels = region_labels,
+      values = colorRampPalette(brewer.pal(8, "Accent"))(10)
   ) +
-  scale_x_continuous(breaks = seq(2008, 2018, by = 2)) + 
-  scale_y_continuous(limits = c(100, 500)) +
+  scale_x_continuous(
+    breaks = seq(2008, 2018, by = 2),
+    ) +
+  scale_y_continuous(
+    limits = c(100, 500),
+    labels = label_currency()
+  ) +
   theme_bw() +
   theme(
     aspect.ratio = 1,
     axis.text = element_text(size = 6),
     plot.title = element_text(size = 10),
     panel.border = element_rect(color = "black", fill = NA)
-  )  
+  ) 
 ```
 
 -   I can modify my colors to be accessible to anyone's eyes
@@ -881,11 +1081,11 @@ ca_childcare |>
 #| label: dvs-2-ex-2
 # Lab 2 Challenge
 # Success Comment: Nice Work!
+# Revised from midterm: I had tilted the x axis labels for no reason, so I just got rid of that.
 
 ggplot(data = surveys,
         mapping = aes(x = weight, y = species, color = sex)) +
         geom_jitter(color = "#808080", alpha = 0.2) +
-        theme(axis.text.x = element_text(angle = 45)) +
         scale_color_manual(values = c("M" = "#00008B",
                                       "F" = "#FF0000")) +
         geom_boxplot(outliers = FALSE) +
@@ -909,11 +1109,12 @@ ggplot(data = surveys,
 ```{r}
 #| label: dvs-2-ex-3
 # Lab 2 Challenge
+# Success Comment: Nice Work!
+# Revised from midterm: I had tilted the x axis labels for no reason, so I just got rid of that.
 
 ggplot(data = surveys,
         mapping = aes(x = weight, y = species, color = sex)) +
         geom_jitter(color = "#808080", alpha = 0.2) +
-        theme(axis.text.x = element_text(angle = 45)) +
         scale_color_manual(values = c("M" = "#00008B",
                                       "F" = "#FF0000")) +
         geom_boxplot(outliers = FALSE) +
@@ -1135,14 +1336,76 @@ ggplot(data = teacher_evals_compare) +
 
 ```{r}
 #| label: dvs-3-2
+# Lab 10 Question 13 
+set.seed(10)
+ci_dat_100 <- map(.x = 1:100,
+                  .f = ~ mycifun(beta0 = 3, beta1 = 0.5, n = 100)) |>
+  bind_rows() |>
+  mutate(cover = factor(cover, levels = c(0, 1)))
+  
 
+ggplot(data = ci_dat_100,
+       mapping = aes(y = seq_len(nrow(ci_dat_100)),
+                     xmin = conf.low,
+                     xmax = conf.high,
+                     color = cover)) +
+  geom_errorbarh() +
+  annotate("text", x = 0.9, y = 105, label = "population slope = 0.5", size = 3) + 
+  geom_vline(xintercept = 0.5, linetype = "dashed") +
+  scale_color_manual(
+    values = c(
+    "0" = "#EA7D70",  
+    "1"  = "#7DBBE0"
+  )) +
+  scale_x_continuous(breaks = seq(from = -1, to = 2, by = 0.5)) +
+  scale_y_continuous(breaks = NULL) + 
+  labs(
+    title = "95% Confidence Intervals of Estimated Regression Slope\nfor 100 Simulated Datasets",
+    subtitle = "CI’s that do not include the population slope are highlighted in <span style = 'color:#C23B22;'>red</span>",
+    x = "Slope Coefficient Estimate",
+    y = NULL
+  ) + 
+  theme_minimal() + 
+  theme(legend.position = "none",
+        plot.subtitle = element_markdown())
 ```
 
 -   I can choose creative geometries (e.g., `geom_segment()`, `geom_ribbon)()`)
 
 ```{r}
 #| label: dvs-3-3
+# Lab 10 Question 13 
+set.seed(10)
+ci_dat_100 <- map(.x = 1:100,
+                  .f = ~ mycifun(beta0 = 3, beta1 = 0.5, n = 100)) |>
+  bind_rows() |>
+  mutate(cover = factor(cover, levels = c(0, 1)))
+  
 
+ggplot(data = ci_dat_100,
+       mapping = aes(y = seq_len(nrow(ci_dat_100)),
+                     xmin = conf.low,
+                     xmax = conf.high,
+                     color = cover)) +
+  geom_errorbarh() +
+  annotate("text", x = 0.9, y = 105, label = "population slope = 0.5", size = 3) + 
+  geom_vline(xintercept = 0.5, linetype = "dashed") +
+  scale_color_manual(
+    values = c(
+    "0" = "#EA7D70",  
+    "1"  = "#7DBBE0"
+  )) +
+  scale_x_continuous(breaks = seq(from = -1, to = 2, by = 0.5)) +
+  scale_y_continuous(breaks = NULL) + 
+  labs(
+    title = "95% Confidence Intervals of Estimated Regression Slope\nfor 100 Simulated Datasets",
+    subtitle = "CI’s that do not include the population slope are highlighted in <span style = 'color:#C23B22;'>red</span>",
+    x = "Slope Coefficient Estimate",
+    y = NULL
+  ) + 
+  theme_minimal() + 
+  theme(legend.position = "none",
+        plot.subtitle = element_markdown())
 ```
 
 **DVS-4: I can calculate numerical summaries of variables.**
@@ -1166,7 +1429,12 @@ teacher_evals_clean |>
 
 ```{r}
 #| label: dvs-4-across
+# Lab 7 Question 1
+fish_missing <- fish |>
+  # shows how many missing values for each variable
+  summarize(across(.cols = everything(), .fns = ~ sum(is.na(.x))))
 
+fish_missing
 ```
 
 **DVS-5: I can find summaries of variables across multiple groups.**
@@ -1231,14 +1499,42 @@ income_by_region
 
 ```{r}
 #| label: dvs-6-ex-2
-
+# Lab 9, Question 3
+# Growing comment: Should all the entries be boldface? Notice that Date is capitalized and the rest of the data types are lower case? How would you use a stringr function to remedy that?
+# To bold only the column header I used row_spec and selected row 0 to be bolded instead of using column_spec and bolding both columns which made all entries bold. Data was capitalized, so I used str_to_lower to make it lowercase like the rest of the data types. 
+  map_chr(.x = surveys, .f = class) |>
+  enframe() |>
+  mutate(value = str_to_lower(value)) |>
+  arrange(value, name) |>
+  kable(
+    caption = "Data Types of Variables in Surveys Dataset on Rodents",
+    col.names = c("Variable", "Data Type")
+  ) |>
+  kable_styling(font_size = 12) |>
+  row_spec(
+    row = 0,
+    bold = TRUE
+  ) 
 ```
 
 -   I can arrange my table to have an intuitive ordering
 
 ```{r}
 #| label: dvs-6-ex-3
+# Lab 4 Question 5 Revised
+# Growing Comment: Notice that your table still has a grouping variable! Because you grouped by **two** variables, your first group was not dropped! Can you give your column names better titles, so the reader knows what "2008" and "2018" represent? What are the values stored in these columns?
+# I added .groups = "drop" to make sure that all grouping is removed. I also added prefixes to the column names to make it clear to the reader what values are in these columns. 
 
+income_by_region <- ca_childcare |>
+  filter(study_year %in% c(2008, 2018)) |>   #filters for year 2008 and 2018
+  group_by(county_region, study_year) |>   # groups by county_region and year (2008 and 2018)
+  summarize(median_income = median(mhi_2018, na.rm = TRUE), .groups = "drop") |> # calculates the median of median household income and removes all grouping
+  pivot_wider(names_from = study_year,   # changes format from long to wide
+              values_from = median_income,
+              names_prefix = "median_income_") |>
+  arrange(desc(median_income_2018))   # arranges rows by 2018 values from highest to lowest
+
+income_by_region
 ```
 
 **DVS-7: I show creativity in my tables.**
@@ -1247,14 +1543,78 @@ income_by_region
 
 ```{r}
 #| label: dvs-7-ex-1
+# Lab 9, Question 8, Revised
+# Growing comment: I want the entire cell to be colored!
+# I used column_spec instead of cell_spec. Using kable was a little funky because I had to tell the program where the column `Missing Values` was coming from. 
 
+missing <- fish |>
+  map_int(.f = ~ sum(is.na(.x))) |>
+  enframe(name = "Measurement Variable", value = "Missing Values") |>
+    arrange(`Missing Values`)
+
+missing |> 
+  kbl(escape = FALSE) |>
+  kable_styling(full_width = FALSE) |>
+  column_spec(2, background = ifelse(missing$`Missing Values` > 0, "#FFE4C4", "#E0FFFF")) |>
+  add_header_above(
+    c("Number of Missing Values for Fish Measurements" = 2),
+    font_size = 20) |>
+  footnote(general = "Data Collected from 1989 to 2006 on the Blackfoot Fish River in Montana")
 ```
 
 -   I can modify the layout of my table to be more readable (e.g., `pivot_longer()` or `pivot_wider()`)
 
 ```{r}
 #| label: dvs-7-ex-2
-
+# Lab 9, Question 5 
+# Growing comment: There is no table being output!
+# I had made a silly mistake and misnamed a key variable. As a result, the table wasn't being output. 
+evals |>
+  distinct(teacher_id, .keep_all = TRUE) |>
+  mutate(
+    academic_degree = fct_recode(
+      academic_degree,
+      "Doctorate" = "dr",
+      "Masters" = "ma",
+      "No Degree" = "no_dgr",
+      "Tenured Professor" = "prof"
+    ),
+    sex = fct_recode(
+      sex,
+      "Male" = "male",
+      "Female" = "female"
+    ),
+    seniority_group = case_when(
+      seniority %in% 1:4 ~ "Junior",
+      seniority %in% 5:8 ~ "Senior",
+      seniority %in% 9:12 ~ "Very Senior"
+    ) |>
+      factor(levels = c("Junior", "Senior", "Very Senior"))
+  ) |>
+  select(
+    academic_degree,
+    seniority = seniority_group,
+    sex
+  ) |>
+  pivot_longer(
+    cols = c(academic_degree, seniority, sex),
+    names_to = "Variable",
+    values_to = "Level"
+  ) |>
+  mutate(
+    Variable = case_when(
+      Variable == "academic_degree" ~ "Academic Degree",
+      Variable == "seniority" ~ "Seniority",
+      Variable == "sex" ~ "Sex"
+    )
+  ) |>
+  count(Variable, Level) |>
+  group_by(Variable) |>
+  mutate(prop = n / sum(n)) |>
+  ungroup() |>
+  kable() |>
+  kable_styling(full_width = FALSE, bootstrap_options = "striped")
+  
 ```
 
 ## Program Efficiency
@@ -1302,6 +1662,12 @@ teacher_evals_clean <- evals |>
 
 ```{r}
 #| label: pe-1-map-1
+# Lab 9, Question 7
+
+fish |>
+  map_int(.f = ~ sum(is.na(.x))) |>
+  enframe(name = "Measurement Variable", value = "Missing Values") |>
+  arrange(`Missing Values`)
 
 ```
 
@@ -1311,21 +1677,54 @@ teacher_evals_clean <- evals |>
 
 ```{r}
 #| label: pe-2-1
-
+# Lab 7, Question 4, Revised
+# I used range() to make my code more efficient.
+rescale_01 <- function(vec) {
+  stopifnot("Input must be numeric" = is.numeric(vec),
+            "Input must have length > 0" = length(vec) > 0)
+  rng <- range(vec, na.rm = TRUE)
+  (vec - rng[1]) / (rng[2] - rng[1])
+}
 ```
 
 -   Example 2: Function that operates on data frames
 
 ```{r}
 #| label: pe-2-2
+# Lab 8, Revised
+# Growing Comment: Is there an argument in pivot_wider() that will fill in the NAs with 0s? Input checks for data frame functions are tricky, but an easy one is to check if the data frame being input is actually a data frame (not a vector or a matrix).
+# I revised my code to use values_fill = 0 instead of mutate and I added an input check. 
 
+pivot_table <- function(df, row_var, col_var) {
+  stopifnot("Input must be a data frame" = is.data.frame(df)) # input validation
+  
+  df |>
+    count( {{ row_var }}, {{ col_var }}) |> # count frequency for each row and column combination
+    pivot_wider(
+      names_from = {{ col_var }}, # columns names are from col_var
+      values_from = n,            # cell values are from counts
+      values_fill = 0             # fills missing values with 0
+    ) |> 
+    janitor::adorn_totals(where = c("row", "col")) # adds row and column totals
+}
 ```
 
 -   Example 3: Function that operates on vectors *or* data frames
 
 ```{r}
 #| label: pe-2-3
+# Lab 8, Question 1 Revised
+# Success comment: Input checks for data frame functions are tricky, but an easy one is to check if the data frame being input is actually a data frame (not a vector or a matrix).
+# I added a data frame input check. 
 
+rescale_column <- function(df, cols) {
+  stopifnot("Input must be a data frame" = is.data.frame(df))
+  df |>
+    mutate(
+      across(.cols = {{ cols }},
+             .fns = ~ rescale_01(.x))
+    )
+}
 ```
 
 **PE-3:I can use iteration to reduce repetition in my code.**
@@ -1334,32 +1733,58 @@ teacher_evals_clean <- evals |>
 
 ```{r}
 #| label: pe-3-across
-# Lab 3 Question 5 Revised
-# Success comment: "Nice use of across!"
+# Lab 8, Question 1 Revised
+# Success comment: Input checks for data frame functions are tricky, but an easy one is to check if the data frame being input is actually a data frame (not a vector or a matrix).
+# I added a data frame input check. 
 
-teacher_evals_clean <- evals |>
-  rename(sex = gender) |>
-  filter(no_participants >= 10) |>
-  mutate(across(.cols = c(course_id, teacher_id), .fns = ~ as.character(.x)),
-         across(.cols = c(question_no, academic_degree, sex), .fns = ~ as.factor(.x)),
-         no_participants = as.integer(no_participants)
-         ) |>
-  select(course_id, teacher_id, question_no, no_participants, resp_share, SET_score_avg, percent_failed_cur, academic_degree, seniority, sex)
-
+rescale_column <- function(df, cols) {
+  stopifnot("Input must be a data frame" = is.data.frame(df))
+  df |>
+    mutate(
+      across(.cols = {{ cols }},
+             .fns = ~ rescale_01(.x))
+    )
+}
 ```
 
 -   using a `map()` function with **one** input (e.g., `map()`, `map_chr()`, `map_dbl()`, etc.)
 
 ```{r}
 #| label: pe-3-map-1
-
+# Lab 9, Question 4
+evals |>
+  map_if(.p = is.character, .f = ~ as.factor(.x)) |>
+  bind_cols()
 ```
 
 -   using a `map()` function with **more than one** input (e.g., `map_2()` or `pmap()`)
 
 ```{r}
 #| label: pe-3-map-2
+# Lab 9, Question 3, Revised
+# Should all the entries be boldface? Notice that Date is capitalized and the rest of the data types are lower case? How would you use a stringr function to remedy that?
+# To complete this portfolio checkpoint, I revised my code to use map2_df.  
+var_names <- names(surveys) # column names
+data_types <- map_chr(.x = surveys, .f = class) # finds the class 
 
+map2_df(
+  .x = var_names,
+  .y = data_types,
+  .f = ~ tibble(
+    Variable = .x,
+    `Data Type` = .y
+  )
+) |>
+  arrange(`Data Type`, Variable) |>
+  mutate(`Data Type` = str_to_lower(`Data Type`)) |>
+  kable(
+    caption = "Data Types of Variables in Surveys Dataset on Rodents"
+    ) |>
+  kable_styling(font_size = 12) |>
+  row_spec(
+    row = 0,
+    bold = TRUE
+  ) 
 ```
 
 **PE-4: I can use modern tools when carrying out my analysis.**
@@ -1379,6 +1804,7 @@ teacher_evals_clean |>
 #| label: pe-4-2
 # Lab 4 Question 7 Revised
 # Success comment: Nice work pivoting and modifying the age variable!Nice work reordering your legend and your facets!!!Can you match my colors??? These are coming from a package and you will need to expand the color palette to get all 10 colors.
+# Revised from midterm: I added dollar signs on the y-axis.
 
 region_labels <- c(
   san_fran_counties            = "San Francisco Bay Area",
@@ -1393,7 +1819,7 @@ region_labels <- c(
   san_diego_imperial_counties  = "San Diego–Imperial"
 )
 ca_childcare |>
-  pivot_longer(cols = c(mc_infant, mc_toddler, mc_preschool),
+  pivot_longer(cols = starts_with("mc_"),
              names_to = "age_group", names_prefix = "mc_",
              values_to = "weekly_price") |>
   mutate(age_group = str_to_title(age_group),
@@ -1411,19 +1837,24 @@ ca_childcare |>
     color = "California Region"
   ) + 
     scale_color_manual(
-    breaks = names(region_labels),
-    labels = region_labels,
-    values = colorRampPalette(brewer.pal(8, "Accent"))(10)
+      breaks = names(region_labels),
+      labels = region_labels,
+      values = colorRampPalette(brewer.pal(8, "Accent"))(10)
   ) +
-  scale_x_continuous(breaks = seq(2008, 2018, by = 2)) + 
-  scale_y_continuous(limits = c(100, 500)) +
+  scale_x_continuous(
+    breaks = seq(2008, 2018, by = 2),
+    ) +
+  scale_y_continuous(
+    limits = c(100, 500),
+    labels = label_currency()
+  ) +
   theme_bw() +
   theme(
     aspect.ratio = 1,
     axis.text = element_text(size = 6),
     plot.title = element_text(size = 10),
     panel.border = element_rect(color = "black", fill = NA)
-  )  
+  )   
 ```
 
 ## Data Simulation & Statisical Models
@@ -1434,14 +1865,55 @@ ca_childcare |>
 
 ```{r}
 #| label: dsm-1-1
+# Lab 10, Question 1 
+randomBabies <- function(n_babies){
+  baby_data <- tibble(baby = 1:n_babies,
+         baby_chosen = sample(1:n_babies,
+                              size = n_babies,
+                              replace = F))
+  baby_data |> 
+    filter(baby == baby_chosen) |>
+    nrow()
 
+}
+
+set.seed(123)
+
+results <- map_int(.x = 1:10000,
+                   .f = ~ randomBabies(n_babies = 4)
+                  )
 ```
 
 -   Example 2
 
 ```{r}
 #| label: dsm-1-2
+# Lab 10, Question 8/10
+mycifun <- function (beta0, beta1, n) {
+  # define slope and intercept parameters
+  intercept = beta0
+  slope = beta1
+  # generate x vector
+  x = runif(n, min = 0, max = 1)
+  # generate noise `ep` vector
+  ep = rnorm(n, mean = 0, sd = 1)
+  # generate outcome from population model
+  y = intercept + x*slope + ep
+  # create an "observed data" dataframe with only the x and y vectors
+  syn_data <- tibble(x,y)
+  # fit a linear regression model to the simulated data
+  model <- lm(y ~ x, data = syn_data)
+  # check that slope is in CI
+  tidy(model, conf.int = TRUE, conf.level = 0.95) |>
+  filter(term == "x") |>
+  select(estimate, conf.low, conf.high) |>
+  mutate(cover = if_else(conf.low <= slope & conf.high >= slope, 1, 0))
+}
 
+set.seed(123)
+ci_dat <- map(.x = 1:1000,
+              .f = ~ mycifun(beta0 = 3, beta1 = 0.5, n = 100)
+              )
 ```
 
 **DSSM-2: I can conduct common statistical analyses in R.**
@@ -1472,7 +1944,9 @@ summary(aov(weight ~ species, data = surveys))
 
 ```{r}
 #| label: dsm-2-3
-
+# Lab 10, Question 5
+model <- lm(y ~ x, data = syn_data)
+summary(model)
 ```
 
 ## Revising My Thinking
@@ -1499,6 +1973,6 @@ I supported my peers and grew as a collaborator by providing helpful feedback on
 
 Here is feedback I gave that is supportive and helpful. I addressed what they did well and as well as areas for improvement.
 
-"Great work! Your code is very tidy, efficient, and easy to follow. You used joins well to limit the suspect down to Miranda. I like the way you used the pull () function to pull the information you want. One optional thing you could do is convert the date to a date-time variable to work with lubridate, which is a learning objective for the midterm portfolio. Additionally, I believe the last step in the lab is to interview Miranda to check that she is the correct person. Those are the only couple of suggestions I have. Keep up the good work!"
+"Nice work on your lab! Your code is tidy, efficient, and easy to follow. I appreciate your use of named arguments which make you code especially easy to read. I only have a few minor tweaks that I would suggest making. I’d recommend reading over your code to just make sure white spaces are used before and after all (\~), (=), and (,). Also, for short and easily readable expressions like “beta1 \> conf.low & beta1 \< conf.high”, you could consider putting them on one line. That’s just a styling suggestion. I also noticed that you named a data frame “table”. This is a base R function, so I’d recommend naming it something else to avoid confusion. Again, my suggestions are all very minor because your code was great to start with! Good work!"
 
 During the pair programming activities I grew as a collaborator by working with my partner to solve each question as a team. When it was my turn to type, I actively listened to my partner's code and respectfully suggested my input only when appropriate. When it was my partners turn to type I told my partner how I thought we should write the code. When neither my partner nor I could figure out a problem, we problem solved as a team or asked for help.
