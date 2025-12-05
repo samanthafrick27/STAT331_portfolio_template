@@ -791,7 +791,7 @@ income_by_region
 
 ```{r}
 #| label: r-2-3
-# Lab 8, Revised
+# Lab 8, Question 2, Revised
 # Growing Comment: Is there an argument in pivot_wider() that will fill in the NAs with 0s? Input checks for data frame functions are tricky, but an easy one is to check if the data frame being input is actually a data frame (not a vector or a matrix).
 # I revised my code to use values_fill = 0 instead of mutate and I added an input check. 
 
@@ -1691,7 +1691,7 @@ rescale_01 <- function(vec) {
 
 ```{r}
 #| label: pe-2-2
-# Lab 8, Revised
+# Lab 8, Question 2, Revised
 # Growing Comment: Is there an argument in pivot_wider() that will fill in the NAs with 0s? Input checks for data frame functions are tricky, but an easy one is to check if the data frame being input is actually a data frame (not a vector or a matrix).
 # I revised my code to use values_fill = 0 instead of mutate and I added an input check. 
 
