@@ -24,6 +24,7 @@ execute:
 #| label: wd-1-csv-1
 # Lab 2 Question 1
 surveys <- read_csv(here::here("Week 2", "Lab2", "surveys.csv"))
+
 ```
 
 -   `csv` Example 2
